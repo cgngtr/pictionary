@@ -1,103 +1,169 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import MasonryGrid from '../../components/MasonryGrid';
+import UploadModal from '../../components/UploadModal';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Mock data for our Pinterest-like grid
+  const [images] = useState([
+    {
+      id: 1,
+      src: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131',
+      alt: 'A cute cat',
+      height: '300px',
+      username: 'catlover',
+      profileImage: 'https://randomuser.me/api/portraits/women/1.jpg'
+    },
+    {
+      id: 2,
+      src: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e',
+      alt: 'Colorful architecture',
+      height: '450px',
+      username: 'traveler',
+      profileImage: 'https://randomuser.me/api/portraits/men/2.jpg'
+    },
+    {
+      id: 3,
+      src: 'https://images.unsplash.com/photo-1505678261036-a3fcc5e884ee',
+      alt: 'Food platter',
+      height: '350px',
+      username: 'foodie',
+      profileImage: 'https://randomuser.me/api/portraits/women/3.jpg'
+    },
+    {
+      id: 4,
+      src: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29',
+      alt: 'Mountain landscape',
+      height: '400px',
+      username: 'naturelover',
+      profileImage: 'https://randomuser.me/api/portraits/men/4.jpg'
+    },
+    {
+      id: 5,
+      src: 'https://images.unsplash.com/photo-1534353436294-0dbd4bdac845',
+      alt: 'Modern interior',
+      height: '280px',
+      username: 'designer',
+      profileImage: 'https://randomuser.me/api/portraits/women/5.jpg'
+    },
+    {
+      id: 6,
+      src: 'https://images.unsplash.com/photo-1584184924103-e310d9dc82fc',
+      alt: 'Fitness workout',
+      height: '320px',
+      username: 'fitnessguru',
+      profileImage: 'https://randomuser.me/api/portraits/men/6.jpg'
+    },
+    {
+      id: 7,
+      src: 'https://images.unsplash.com/photo-1490367532201-b9bc1dc483f6',
+      alt: 'Coffee art',
+      height: '380px',
+      username: 'coffeelover',
+      profileImage: 'https://randomuser.me/api/portraits/women/7.jpg'
+    },
+    {
+      id: 8,
+      src: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac',
+      alt: 'Beach sunset',
+      height: '420px',
+      username: 'beachbum',
+      profileImage: 'https://randomuser.me/api/portraits/men/8.jpg'
+    },
+    {
+      id: 9,
+      src: 'https://images.unsplash.com/photo-1527631746610-bca00a040d60',
+      alt: 'Vintage car',
+      height: '300px',
+      username: 'carfan',
+      profileImage: 'https://randomuser.me/api/portraits/women/9.jpg'
+    },
+    {
+      id: 10,
+      src: 'https://images.unsplash.com/photo-1484723091739-30a097e8f929',
+      alt: 'Food close-up',
+      height: '350px',
+      username: 'chefmaster',
+      profileImage: 'https://randomuser.me/api/portraits/men/10.jpg'
+    },
+    {
+      id: 11,
+      src: 'https://images.unsplash.com/photo-1547586696-ea22b4d4235d',
+      alt: 'City skyline',
+      height: '400px',
+      username: 'cityexplorer',
+      profileImage: 'https://randomuser.me/api/portraits/women/11.jpg'
+    },
+    {
+      id: 12,
+      src: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30',
+      alt: 'Hiking trail',
+      height: '380px',
+      username: 'adventurer',
+      profileImage: 'https://randomuser.me/api/portraits/men/12.jpg'
+    },
+    {
+      id: 13,
+      src: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800',
+      alt: 'Road trip',
+      height: '320px',
+      username: 'roadtripper',
+      profileImage: 'https://randomuser.me/api/portraits/women/13.jpg'
+    },
+    {
+      id: 14,
+      src: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836',
+      alt: 'Gourmet dish',
+      height: '340px',
+      username: 'gourmetlover',
+      profileImage: 'https://randomuser.me/api/portraits/men/14.jpg'
+    },
+    {
+      id: 15,
+      src: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d',
+      alt: 'Workspace setup',
+      height: '300px',
+      username: 'productivityguru',
+      profileImage: 'https://randomuser.me/api/portraits/women/15.jpg'
+    },
+  ]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
+  return (
+    <>
+      <div className="py-6">
+        <MasonryGrid images={images} />
+      </div>
+      
+      {/* Floating Create Pin button (mobile only) */}
+      <div className="md:hidden fixed right-4 bottom-4">
+        <button
+          onClick={openModal}
+          className="bg-red-500 hover:bg-red-600 text-white rounded-full p-3 shadow-lg transition-colors duration-300"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 4v16m8-8H4"
+            ></path>
+          </svg>
+        </button>
+      </div>
+      
+      {/* Upload Modal */}
+      <UploadModal isOpen={isModalOpen} onClose={closeModal} />
+    </>
   );
 }
