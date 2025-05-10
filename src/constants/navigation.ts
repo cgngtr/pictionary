@@ -1,4 +1,4 @@
-import { HomeIcon, SearchIcon, PlusIcon, ProfileIcon } from '@/components/Icons';
+import { HomeIcon, SearchIcon, PlusIcon, ProfileIcon } from '../../components/Icons';
 
 export const navigationItems = [
   {
