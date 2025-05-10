@@ -6,33 +6,36 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#050505] shadow-sm py-2 px-4">
+    <nav className="sticky top-0 z-50 bg-[#050505] shadow-md py-3 px-4 border-b border-[#1a1a1a]">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <a href="/" className="flex items-center">
-            <svg
-              className="h-8 w-8 text-red-500"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z" />
-            </svg>
-            <span className="ml-2 text-xl font-bold text-white">Pictionary</span>
+          <a href="/" className="flex items-center group">
+            <div className="relative">
+              <svg
+                className="h-9 w-9 text-red-500 group-hover:text-red-400 transition-colors duration-300"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z" />
+              </svg>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>
+            <span className="ml-2 text-xl font-bold text-white bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">Pictionary</span>
           </a>
         </div>
 
         {/* Search Bar - Desktop */}
         <div className="hidden md:block flex-grow max-w-xl mx-6">
-          <div className="relative">
+          <div className="relative group">
             <input
               type="text"
               placeholder="Search..."
-              className="w-full py-2 pl-10 pr-4 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-full focus:outline-none focus:bg-white dark:focus:bg-gray-700 focus:ring-2 focus:ring-red-300"
+              className="w-full py-2.5 pl-12 pr-4 text-gray-700 dark:text-gray-200 bg-gray-100/10 border border-gray-700/50 dark:bg-gray-800/50 rounded-full focus:outline-none focus:bg-gray-800/80 dark:focus:bg-gray-700/80 focus:ring-2 focus:ring-red-500/50 transition-all duration-300 backdrop-blur-sm"
             />
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-4">
               <svg
-                className="w-5 h-5 text-gray-400"
+                className="w-5 h-5 text-gray-400 group-hover:text-red-400 transition-colors duration-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -46,30 +49,40 @@ const Navbar = () => {
                 ></path>
               </svg>
             </div>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <span className="text-xs text-gray-400">⌘ K</span>
+            </div>
           </div>
         </div>
 
         {/* Profile/Settings - Desktop */}
-        <div className="hidden md:flex items-center space-x-4">
-          <button className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              ></path>
-            </svg>
+        <div className="hidden md:flex items-center space-x-5">
+          <button className="relative group">
+            <div className="p-2 rounded-full bg-gray-800/50 border border-gray-700/30 hover:bg-gray-700/70 transition-colors duration-300 backdrop-blur-sm">
+              <svg
+                className="w-5 h-5 text-gray-300 group-hover:text-red-400 transition-colors duration-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                ></path>
+              </svg>
+            </div>
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-xs text-white justify-center items-center">3</span>
+            </span>
           </button>
-          <button className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white">
+          
+          <button className="p-2 rounded-full bg-gray-800/50 border border-gray-700/30 hover:bg-gray-700/70 transition-colors duration-300 backdrop-blur-sm">
             <svg
-              className="w-6 h-6"
+              className="w-5 h-5 text-gray-300 hover:text-red-400 transition-colors duration-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -83,8 +96,11 @@ const Navbar = () => {
               ></path>
             </svg>
           </button>
-          <div className="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center text-white font-bold cursor-pointer">
-            U
+          
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-red-500 to-red-600 p-0.5 ring-2 ring-gray-800 hover:ring-gray-700 transition-all duration-300 cursor-pointer shadow-lg">
+            <div className="h-full w-full rounded-full bg-gray-800 flex items-center justify-center text-white font-bold overflow-hidden">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User profile" className="h-full w-full object-cover" />
+            </div>
           </div>
         </div>
 

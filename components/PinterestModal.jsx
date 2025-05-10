@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Dynamically import Lucide React icons to avoid SSR issues
 import dynamic from 'next/dynamic';
 
@@ -20,6 +20,29 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
     setIsOpen(false);
   };
 
+  // Close modal with Escape key
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  // Add event listener for Escape key
+  useEffect(() => {
+    // Only run this effect on the client side
+    if (typeof window !== 'undefined') {
+      document.addEventListener('keydown', handleKeyDown);
+      // Prevent scrolling on body when modal is open
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        // Restore scrolling when modal is closed
+        document.body.style.overflow = 'auto';
+      };
+    }
+  }, []);
+
   const handleSave = () => {
     setIsSaved(!isSaved);
   };
@@ -32,15 +55,25 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
     return null;
   }
 
+  const handleBackdropClick = (e) => {
+    // Only close if the backdrop itself is clicked, not its children
+    if (e.target === e.currentTarget) {
+      setIsOpen(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-screen overflow-hidden flex flex-col md:flex-row shadow-xl">
+    <div 
+      className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center p-4 z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-screen overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-200 dark:border-gray-700">
         {/* Left: Image section */}
-        <div className="relative w-full md:w-3/5 bg-gray-100 dark:bg-gray-700">
+        <div className="relative w-full md:w-3/5 bg-gray-100 dark:bg-gray-700 overflow-hidden">
           <img 
             src={image?.src || 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131'} 
             alt={image?.alt || 'Pin image'} 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
           />
         </div>
 
@@ -86,40 +119,11 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
             </div>
           </div>
 
-          <div className="border-t border-gray-100 dark:border-gray-700 py-4">
-            <h3 className="font-medium mb-2">Comments</h3>
-            <div className="space-y-3 mb-4 max-h-40 overflow-y-auto">
-              <div className="flex items-start gap-2">
-                <div className="h-8 w-8 rounded-full bg-gray-300 flex-shrink-0 overflow-hidden">
-                  <img
-                    src="https://randomuser.me/api/portraits/men/32.jpg"
-                    alt="User comment"
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Alex Martinez</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Love the clean lines in this design!</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="h-8 w-8 rounded-full bg-gray-300 flex-shrink-0 overflow-hidden">
-                  <img
-                    src="https://randomuser.me/api/portraits/women/32.jpg"
-                    alt="User comment"
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Jamie Wong</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Saving this for my apartment renovation!</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Spacer to push the action buttons to the bottom */}
+          <div className="flex-grow"></div>
 
           <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-auto">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-between">
               <button 
                 className={`flex items-center gap-1 px-3 py-2 rounded-full ${isLiked ? 'bg-red-100 text-red-500 dark:bg-red-900 dark:text-red-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 onClick={handleLike}
@@ -127,14 +131,12 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
                 <Heart size={16} fill={isLiked ? "currentColor" : "none"} /> 
                 <span className="text-sm">{isLiked ? '25' : '24'}</span>
               </button>
-              <div className="flex-1 relative">
-                <input 
-                  type="text"
-                  placeholder="Add a comment"
-                  className="w-full px-4 py-2 pr-10 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-full focus:outline-none focus:ring-1 focus:ring-red-500 text-sm"
-                />
-                <MessageCircle size={16} className="absolute right-3 top-2.5 text-gray-400" />
-              </div>
+              <button 
+                className={`px-4 py-2 rounded-full ${isSaved ? 'bg-red-500 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
+                onClick={handleSave}
+              >
+                {isSaved ? 'Saved' : 'Save'}
+              </button>
             </div>
           </div>
         </div>
