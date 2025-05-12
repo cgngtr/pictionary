@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 type AuthMode = 'signin' | 'signup'
 
@@ -22,7 +22,6 @@ export const AuthForm = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const validateForm = (): boolean => {
     const errors: ValidationErrors = {}
@@ -91,7 +90,7 @@ export const AuthForm = () => {
       }
 
       router.refresh()
-      router.push('/profile')
+      router.push('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {

@@ -2,12 +2,58 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/utils';
+import { User } from '@supabase/supabase-js';
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user || null);
+      } catch (error) {
+        console.error('Error getting user session for navigation:', error);
+      }
+    };
+    getUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`Navigation Auth Event: ${event}`);
+      setUser(session?.user || null);
+      if (event === 'SIGNED_OUT') {
+        router.refresh();
+      } else if (event === 'SIGNED_IN') {
+        router.refresh();
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, [supabase, router]);
+
+  const handleSignOut = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      console.log('User signed out successfully, refreshing router...');
+      router.refresh();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -15,10 +61,15 @@ export default function Navigation() {
     { name: 'Create', href: '/create' },
   ];
 
-  // Mock user data - will be replaced with real data later
-  const user = {
-    name: 'John Doe',
-    profileImage: 'https://randomuser.me/api/portraits/men/1.jpg'
+  const userProfile = {
+    name: user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || '',
+    profileImage: user?.user_metadata?.avatar_url || 'https://randomuser.me/api/portraits/men/1.jpg'
+  };
+
+  const goToProfile = () => {
+    console.log("Navigating to profile page");
+    router.push('/profile');
   };
 
   return (
@@ -84,20 +135,52 @@ export default function Navigation() {
             </div>
           </div>
 
-          {/* User Profile */}
+          {/* User Profile / Auth Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            <button
-              type="button"
-              className="flex items-center space-x-2 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            {user ? (
+              <>
+                <button
+                  onClick={goToProfile}
+                  className="flex items-center space-x-2 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                  disabled={isLoading}
+                  aria-label="Profile"
+                >
+                  <Image
+                    src={userProfile.profileImage}
+                    alt={userProfile.name}
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  disabled={isLoading}
+                  className="text-sm text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                >
+                  {isLoading ? 'Processing...' : 'Sign Out'}
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400"
+              >
+                Sign In
+              </Link>
+            )}
+            {/* Settings Icon - Always Visible */} 
+            <Link
+              href="/settings"
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Settings"
             >
-              <Image
-                src={user.profileImage}
-                alt={user.name}
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
-            </button>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="sr-only">Settings</span>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -144,24 +227,68 @@ export default function Navigation() {
               </Link>
             ))}
           </div>
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <Image
-                  src={user.profileImage}
-                  alt={user.name}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-              </div>
-              <div>
-                <div className="text-base font-medium text-gray-800 dark:text-gray-200">
-                  {user.name}
+          
+          {user ? (
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={goToProfile}
+                    className="flex-shrink-0"
+                    disabled={isLoading}
+                  >
+                    <Image
+                      src={userProfile.profileImage}
+                      alt={userProfile.name}
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  </button>
+                  <div>
+                    <div className="text-base font-medium text-gray-800 dark:text-gray-200">
+                      {userProfile.name}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {userProfile.email}
+                    </div>
+                  </div>
                 </div>
+                <button
+                  onClick={handleSignOut}
+                  disabled={isLoading}
+                  className="text-sm text-gray-500 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                >
+                  {isLoading ? 'Processing...' : 'Sign Out'}
+                </button>
+              </div>
+              <div className="mt-3">
+                <Link
+                  href="/settings"
+                  className="block text-center px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400"
+                  aria-disabled={isLoading}
+                  tabIndex={isLoading ? -1 : 0}
+                >
+                  Settings
+                </Link>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+              <Link
+                href="/login"
+                className="block text-center px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400"
+              >
+                Login
+              </Link>
+              <Link
+                href="/settings"
+                className="block text-center px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400"
+              >
+                Settings
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </nav>

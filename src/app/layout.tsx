@@ -6,11 +6,14 @@ import "./globals.css";
 // Force dynamic rendering to handle hydration mismatches
 export const dynamic = "force-dynamic";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Pictionary",
-  description: "A modern image sharing platform",
+  title: "Pictionary AI",
+  description: "Play Pictionary with AI",
 };
 
 export default function RootLayout({
