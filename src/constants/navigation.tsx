@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { HomeIcon, SearchIcon, PlusIcon, ProfileIcon } from '../../components/Icons';
+import { HomeIcon, SearchIcon, PlusIcon, ProfileIcon } from '../components/Icons';
 
 interface NavigationItem {
   href: string;
