@@ -6,8 +6,24 @@ import { createClient } from '@/lib/supabase/utils';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 
+type ProfileData = {
+  id: string;
+  user_id: string;
+  description: string;
+  avatar_url: string;
+};
+
+type UserData = {
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+};
+
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
@@ -20,12 +36,40 @@ export default function ProfilePage() {
         if (session) {
           setUser(session.user);
           console.log("Profile page: User found", session.user.email);
+          
+          // First, fetch user data from our 'users' table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+            return;
+          }
+          
+          setUserData(userData);
+          
+          // Then, fetch profile data from our 'profiles' table
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userData.id)
+            .single();
+            
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error fetching profile data:', profileError);
+          } else {
+            setProfileData(profileData);
+          }
+          
         } else {
           console.log("Profile page: No session found, redirecting to login via middleware...");
           router.refresh();
         }
       } catch (error) {
-        console.error('Error getting user session:', error);
+        console.error('Error getting user data:', error);
         router.push('/login');
       } finally {
         setIsLoading(false);
@@ -38,8 +82,33 @@ export default function ProfilePage() {
       console.log(`Profile page auth change: ${event}`);
       if (event === 'SIGNED_OUT') {
         router.refresh();
-      } else {
-        setUser(session?.user || null);
+      } else if (session?.user) {
+        setUser(session.user);
+        
+        // Fetch user and profile data on auth change
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Error fetching user data on auth change:', error);
+              return;
+            }
+            
+            setUserData(data);
+            
+            // Then fetch profile data
+            supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', data.id)
+              .single()
+              .then(({ data: profileData }) => {
+                setProfileData(profileData);
+              });
+          });
       }
     });
 
@@ -63,11 +132,11 @@ export default function ProfilePage() {
   };
 
   const userProfile = {
-    name: user?.email?.split('@')[0] || 'User',
-    username: user?.email || '@user',
-    bio: user?.user_metadata?.bio || 'Digital artist and photographer | Creating beautiful moments',
-    profileImage: user?.user_metadata?.avatar_url || 'https://randomuser.me/api/portraits/men/1.jpg',
-    coverImage: user?.user_metadata?.cover_url || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+    name: userData ? `${userData.first_name} ${userData.last_name}` : 'User',
+    username: userData?.username || '@user',
+    bio: profileData?.description || 'No description available',
+    profileImage: profileData?.avatar_url || 'https://source.unsplash.com/random/400x400/?portrait',
+    coverImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
     stats: {
       pins: 245,
       following: 1234,
@@ -122,19 +191,8 @@ export default function ProfilePage() {
 
           <div className="mt-6 text-center md:text-left">
             <h1 className="text-4xl font-bold text-gray-900">{userProfile.name}</h1>
-            <p className="mt-1 text-xl text-gray-600">{userProfile.username}</p>
-            <p className="mt-2 text-md font-medium text-indigo-600">Email: {user?.email}</p>
+            <p className="mt-1 text-xl text-gray-600">{user.email}</p>
             <p className="mt-4 text-lg text-gray-800 max-w-2xl">{userProfile.bio}</p>
-
-            <div className="mt-6">
-              <button
-                onClick={handleSignOut}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {isLoading ? 'Processing...' : 'Sign Out'}
-              </button>
-            </div>
 
             <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-8">
               <div className="text-center md:text-left">

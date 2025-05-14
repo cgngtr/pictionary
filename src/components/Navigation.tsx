@@ -7,9 +7,25 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/utils';
 import { User } from '@supabase/supabase-js';
 
+type ProfileData = {
+  id: string;
+  user_id: string;
+  description: string;
+  avatar_url: string;
+};
+
+type UserData = {
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+};
+
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -19,7 +35,36 @@ export default function Navigation() {
     const getUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user || null);
+        if (session?.user) {
+          setUser(session.user);
+          
+          // First, get user data from users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (userError) {
+            console.error('Error fetching user data for navigation:', userError);
+            return;
+          }
+          
+          setUserData(userData);
+          
+          // Then, get profile data using user ID
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userData.id)
+            .single();
+            
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error fetching profile data for navigation:', profileError);
+          } else {
+            setProfileData(profileData);
+          }
+        }
       } catch (error) {
         console.error('Error getting user session for navigation:', error);
       }
@@ -28,11 +73,39 @@ export default function Navigation() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`Navigation Auth Event: ${event}`);
-      setUser(session?.user || null);
+      
       if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setUserData(null);
+        setProfileData(null);
         router.refresh();
-      } else if (event === 'SIGNED_IN') {
-        router.refresh();
+      } else if (session?.user) {
+        setUser(session.user);
+        
+        // Get user and profile data on auth change
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Error fetching user data on auth change:', error);
+              return;
+            }
+            
+            setUserData(data);
+            
+            // Then get profile data
+            supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', data.id)
+              .single()
+              .then(({ data: profileData }) => {
+                setProfileData(profileData);
+              });
+          });
       }
     });
 
@@ -62,9 +135,11 @@ export default function Navigation() {
   ];
 
   const userProfile = {
-    name: user?.email?.split('@')[0] || 'Guest',
+    name: userData 
+      ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || user?.email?.split('@')[0] || 'Guest'
+      : user?.email?.split('@')[0] || 'Guest',
     email: user?.email || '',
-    profileImage: user?.user_metadata?.avatar_url || 'https://randomuser.me/api/portraits/men/1.jpg'
+    profileImage: profileData?.avatar_url || 'https://source.unsplash.com/random/100x100/?portrait'
   };
 
   const goToProfile = () => {
@@ -153,13 +228,7 @@ export default function Navigation() {
                     className="rounded-full"
                   />
                 </button>
-                <button
-                  onClick={handleSignOut}
-                  disabled={isLoading}
-                  className="text-sm text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
-                >
-                  {isLoading ? 'Processing...' : 'Sign Out'}
-                </button>
+                
               </>
             ) : (
               <Link
@@ -254,13 +323,7 @@ export default function Navigation() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  disabled={isLoading}
-                  className="text-sm text-gray-500 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
-                >
-                  {isLoading ? 'Processing...' : 'Sign Out'}
-                </button>
+                
               </div>
               <div className="mt-3">
                 <Link
