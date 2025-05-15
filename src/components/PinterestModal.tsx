@@ -12,6 +12,7 @@ const Share2 = dynamic(() => import('lucide-react').then(mod => mod.Share2), { s
 const Download = dynamic(() => import('lucide-react').then(mod => mod.Download), { ssr: false });
 const Bookmark = dynamic(() => import('lucide-react').then(mod => mod.Bookmark), { ssr: false });
 const Trash2 = dynamic(() => import('lucide-react').then(mod => mod.Trash2), { ssr: false }); // Added Trash2 icon
+const Check = dynamic(() => import('lucide-react').then(mod => mod.Check), { ssr: false }); // Added Check icon for copy feedback
 // const MessageCircle = dynamic(() => import('lucide-react').then(mod => mod.MessageCircle), { ssr: false }); // Not used, can be removed
 
 interface PinterestModalProps {
@@ -24,6 +25,7 @@ interface PinterestModalProps {
 export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }: PinterestModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [isCopied, setIsCopied] = useState(false); // State for copy feedback
 
   const handleClose = () => {
     setIsOpen(false);
@@ -58,6 +60,24 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
 
   const handleLike = () => {
     setIsLiked(!isLiked);
+  };
+
+  const handleShare = async () => {
+    if (!image || !image.id) { // Check for image.id for the new URL structure
+      console.error('Cannot copy link: image ID is missing.');
+      alert('Could not copy link. Image ID is missing.');
+      return;
+    }
+    // Construct the site-specific URL
+    const shareUrl = `${window.location.origin}/pin/${image.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      alert('Failed to copy link. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
@@ -118,9 +138,15 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
               </button>
               <button 
                 title="Share"
-                className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+                onClick={handleShare}
+                className="flex items-center gap-1 rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
               >
-                {Share2 && <Share2 size={18} />}
+                {isCopied ? (
+                  Check && <Check size={18} className="text-green-500" />
+                ) : (
+                  Share2 && <Share2 size={18} />
+                )}
+                {isCopied && <span className="text-sm text-green-500 dark:text-green-400">Copied!</span>}
               </button>
               <button 
                 title="Delete Pin"
