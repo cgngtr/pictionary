@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import ImageCard from './ImageCard';
+import { HomePageImageData } from '@/app/page'; // Adjusted import path
 
-const MasonryGrid = ({ images }) => {
+const MasonryGrid = ({ images }: { images: HomePageImageData[] }) => {
   const [columns, setColumns] = useState(4);
 
   // Responsive column adjustment based on screen width
@@ -29,9 +30,9 @@ const MasonryGrid = ({ images }) => {
 
   // Distribute images into columns
   const getColumnImages = () => {
-    const columnImages = Array.from({ length: columns }, () => []);
+    const columnImages: HomePageImageData[][] = Array.from({ length: columns }, () => []);
     
-    images.forEach((image, index) => {
+    images.forEach((image: HomePageImageData, index: number) => {
       // Add each image to the column with the least height
       const columnIndex = index % columns;
       columnImages[columnIndex].push(image);
@@ -42,14 +43,12 @@ const MasonryGrid = ({ images }) => {
 
   return (
     <div className="flex w-full gap-4">
-      {getColumnImages().map((columnImages, columnIndex) => (
+      {getColumnImages().map((columnImages: HomePageImageData[], columnIndex: number) => (
         <div key={columnIndex} className="flex-1 flex flex-col">
-          {columnImages.map((image, imageIndex) => (
+          {columnImages.map((image: HomePageImageData, imageIndex: number) => (
             <ImageCard 
               key={`${columnIndex}-${imageIndex}`}
-              image={image}
-              username={image.username}
-              profileImage={image.profileImage}
+              imageData={image}
             />
           ))}
         </div>

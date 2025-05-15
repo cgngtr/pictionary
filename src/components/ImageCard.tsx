@@ -2,19 +2,34 @@
 
 import { useState } from 'react';
 import PinterestModal from './PinterestModal';
+import type { HomePageImageData } from '@/app/page';
 
-const ImageCard = ({ image, username, profileImage }) => {
+interface ImageCardProps {
+  imageData: HomePageImageData;
+}
+
+const ImageCard = ({ imageData }: ImageCardProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { 
+    src, 
+    alt, 
+    height, 
+    username, 
+    profileImage, 
+    title, 
+    description 
+  } = imageData;
 
   return (
     <div 
       className="relative mb-4 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group"
     >
       <img 
-        src={image.src} 
-        alt={image.alt || 'Pin image'} 
+        src={src}
+        alt={alt || 'Pin image'} 
         className="w-full object-cover cursor-pointer transition-transform duration-300 group-hover:scale-105"
-        style={{ height: `${image.height || 'auto'}` }}
+        style={{ height: `${height || 'auto'}` }}
         onClick={() => setIsModalOpen(true)}
       />
       
@@ -29,18 +44,20 @@ const ImageCard = ({ image, username, profileImage }) => {
       </div>
       
       {/* User info */}
-      <div className="absolute bottom-3 left-3 flex items-center opacity-0 group-hover:opacity-100 transform translate-y-[10px] group-hover:translate-y-0 transition-all duration-300">
-        {profileImage && (
-          <img 
-            src={profileImage} 
-            alt={username} 
-            className="w-8 h-8 rounded-full mr-2 border border-white"
-          />
-        )}
-        {username && (
-          <span className="text-white font-medium text-sm">{username}</span>
-        )}
-      </div>
+      {(username || profileImage) && (
+        <div className="absolute bottom-3 left-3 flex items-center opacity-0 group-hover:opacity-100 transform translate-y-[10px] group-hover:translate-y-0 transition-all duration-300">
+          {profileImage && (
+            <img 
+              src={profileImage}
+              alt={username || 'User'} 
+              className="w-8 h-8 rounded-full mr-2 border border-white"
+            />
+          )}
+          {username && (
+            <span className="text-white font-medium text-sm">{username}</span>
+          )}
+        </div>
+      )}
       
       {/* Pinterest Modal */}
       {isModalOpen && (
@@ -48,13 +65,13 @@ const ImageCard = ({ image, username, profileImage }) => {
           isOpen={isModalOpen} 
           setIsOpen={setIsModalOpen} 
           image={{
-            src: image?.src || '',
-            alt: image?.alt || 'Pin image',
-            height: image?.height || 'auto',
+            src: src,
+            alt: alt || 'Pin image',
+            height: height || 'auto',
             username: username || 'User',
             profileImage: profileImage || 'https://randomuser.me/api/portraits/women/1.jpg',
-            title: image?.title || 'Beautiful Image',
-            description: image?.description || 'A stunning image worth saving to your collection.'
+            title: title || 'Beautiful Image',
+            description: description || 'A stunning image worth saving to your collection.'
           }}
         />
       )}
