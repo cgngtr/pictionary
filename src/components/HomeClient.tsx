@@ -17,7 +17,7 @@ export default function HomeClient({ images }: HomeClientProps) {
 
   return (
     <>
-      <div className="py-6">
+      <div className="py-6 px-6">
         {images && images.length > 0 ? (
           <MasonryGrid images={images} />
         ) : (
