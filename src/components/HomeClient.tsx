@@ -7,9 +7,10 @@ import type { HomePageImageData } from '@/app/page';
 
 interface HomeClientProps {
   images: HomePageImageData[];
+  onDelete: (imageId: string, storagePath: string) => void;
 }
 
-export default function HomeClient({ images }: HomeClientProps) {
+export default function HomeClient({ images, onDelete }: HomeClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const handleOpenModal = () => setIsModalOpen(true);
@@ -19,7 +20,7 @@ export default function HomeClient({ images }: HomeClientProps) {
     <>
       <div className="py-6 px-6">
         {images && images.length > 0 ? (
-          <MasonryGrid images={images} />
+          <MasonryGrid images={images} onDelete={onDelete} />
         ) : (
           <div className="text-center py-10">
             <p className="text-xl text-gray-500">No images to display.</p>

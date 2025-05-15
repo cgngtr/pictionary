@@ -99,6 +99,40 @@ export default function HomePage() {
     }
   }, [supabase]); // supabase dependency
 
+  const handleDeletePin = useCallback(async (imageId: string, storagePath: string) => {
+    if (!imageId || !storagePath) {
+      console.error('Delete error: imageId or storagePath is missing.');
+      alert('Could not delete pin due to missing information.');
+      return;
+    }
+
+    try {
+      // 1. Delete from storage
+      const { error: storageError } = await supabase.storage.from('images').remove([storagePath]);
+      if (storageError) {
+        console.error('Storage deletion error:', storageError);
+        // Decide if you want to proceed if storage deletion fails, or alert and stop.
+        // For now, we'll log and attempt to delete from DB anyway.
+        // throw storageError; // Or alert user and return
+      }
+
+      // 2. Delete from database table
+      const { error: dbError } = await supabase.from('images').delete().match({ id: imageId });
+      if (dbError) {
+        console.error('Database deletion error:', dbError);
+        throw dbError; // If DB deletion fails, this is more critical
+      }
+
+      // 3. Update frontend state
+      setAllImages(currentImages => currentImages.filter(img => img.id !== imageId));
+      alert('Pin deleted successfully!'); // Or use a more subtle notification
+
+    } catch (error: any) {
+      console.error('Failed to delete pin:', error);
+      alert(`Failed to delete pin: ${error.message}`);
+    }
+  }, [supabase]);
+
   const loadInitialData = useCallback(async () => {
     setIsLoading(true);
     setPageError(null);
@@ -169,5 +203,5 @@ export default function HomePage() {
   //   );
   // }
 
-  return <HomeClient images={allImages} />;
+  return <HomeClient images={allImages} onDelete={handleDeletePin} />;
 }

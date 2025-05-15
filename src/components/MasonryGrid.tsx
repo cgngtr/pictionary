@@ -1,54 +1,69 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import ImageCard from './ImageCard';
 import { HomePageImageData } from '@/app/page'; // Adjusted import path
 
-const MasonryGrid = ({ images }: { images: HomePageImageData[] }) => {
+// Simple debounce function (assuming it might have been removed or for completeness)
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<F>): Promise<ReturnType<F>> =>
+    new Promise((resolve) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => resolve(func(...args)), waitFor);
+    });
+}
+
+interface MasonryGridProps {
+  images: HomePageImageData[];
+  onDelete: (imageId: string, storagePath: string) => void;
+}
+
+const MasonryGrid = ({ images, onDelete }: MasonryGridProps) => {
   const [columns, setColumns] = useState(4);
 
   // Responsive column adjustment based on screen width
   useEffect(() => {
+    const calculateColumns = () => {
+      const innerWidth = window.innerWidth;
+      if (innerWidth < 640) return 1;
+      if (innerWidth < 768) return 2;
+      if (innerWidth < 1024) return 3;
+      if (innerWidth < 1280) return 4;
+      return 5;
+    };
+    setColumns(calculateColumns()); // Set initial columns on mount
+
     const handleResize = () => {
-      if (window.innerWidth < 640) {
-        setColumns(1);
-      } else if (window.innerWidth < 768) {
-        setColumns(2);
-      } else if (window.innerWidth < 1024) {
-        setColumns(3);
-      } else if (window.innerWidth < 1280) {
-        setColumns(4);
-      } else {
-        setColumns(5);
-      }
+      const newColumnCount = calculateColumns();
+      setColumns(currentColumns => newColumnCount !== currentColumns ? newColumnCount : currentColumns);
     };
 
-    handleResize(); // Set initial columns
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const debouncedHandleResize = debounce(handleResize, 250);
+    window.addEventListener('resize', debouncedHandleResize);
+    return () => window.removeEventListener('resize', debouncedHandleResize);
   }, []);
 
   // Distribute images into columns
-  const getColumnImages = () => {
-    const columnImages: HomePageImageData[][] = Array.from({ length: columns }, () => []);
-    
-    images.forEach((image: HomePageImageData, index: number) => {
-      // Add each image to the column with the least height
+  const getColumnImages = useCallback(() => {
+    if (!images || images.length === 0 || columns === 0) return [];
+    const columnContainers: HomePageImageData[][] = Array.from({ length: columns }, () => []);
+    images.forEach((image, index) => {
       const columnIndex = index % columns;
-      columnImages[columnIndex].push(image);
+      columnContainers[columnIndex].push(image);
     });
-    
-    return columnImages;
-  };
+    return columnContainers;
+  }, [images, columns]);
 
   return (
     <div className="flex w-full gap-4">
-      {getColumnImages().map((columnImages: HomePageImageData[], columnIndex: number) => (
-        <div key={columnIndex} className="flex-1 flex flex-col">
-          {columnImages.map((image: HomePageImageData, imageIndex: number) => (
+      {getColumnImages().map((columnImgs, columnIndex) => (
+        <div key={columnIndex} className="flex-1 flex flex-col gap-4">
+          {columnImgs.map((image) => (
             <ImageCard 
-              key={`${columnIndex}-${imageIndex}`}
+              key={image.id}
               imageData={image}
+              onDelete={onDelete}
             />
           ))}
         </div>

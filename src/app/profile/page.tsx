@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/utils';
 // import { removeStorageRLS } from '@/lib/supabase/remove-storage-rls'; // Removed
 import { User } from '@supabase/supabase-js';
@@ -248,6 +248,33 @@ export default function ProfilePage() {
     console.log("ProfilePage: Closing pin detail modal.");
   };
 
+  const handleDeletePin = useCallback(async (imageId: string, storagePath: string) => {
+    if (!imageId || !storagePath) {
+      console.error('Delete error: imageId or storagePath is missing.');
+      alert('Could not delete pin due to missing information.');
+      return;
+    }
+    try {
+      const { error: storageError } = await supabase.storage.from('images').remove([storagePath]);
+      if (storageError) {
+        console.warn('Storage deletion warning (proceeding with DB deletion):', storageError);
+      }
+      const { error: dbError } = await supabase.from('images').delete().match({ id: imageId });
+      if (dbError) throw dbError;
+
+      setUserImages(currentImages => currentImages.filter(img => img.id !== imageId));
+      setImageUrls(currentUrls => {
+        const newUrls = { ...currentUrls };
+        delete newUrls[imageId];
+        return newUrls;
+      });
+      alert('Pin deleted successfully!');
+    } catch (error: any) {
+      console.error('Failed to delete pin:', error);
+      alert(`Failed to delete pin: ${error.message}`);
+    }
+  }, [supabase]);
+
   const handleSignOut = async () => {
     try {
       setIsLoading(true);
@@ -380,6 +407,9 @@ export default function ProfilePage() {
                     key={image.id} 
                     className="group relative aspect-[3/4] rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer"
                     onClick={() => handlePinClick(image)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handlePinClick(image)}
+                    aria-label={image.title || 'Open pin details'}
                   >
                     {imageUrls[image.id] ? (
                       <>
@@ -393,13 +423,37 @@ export default function ProfilePage() {
                             (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x600?text=Image+Load+Error';
                           }}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                          <h3 className="text-white font-bold text-lg truncate">{image.title}</h3>
-                          {image.description && (
-                            <p className="text-white/90 text-sm line-clamp-2 mt-1">
-                              {image.description}
-                            </p>
+                        <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none"></div>
+                        
+                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transform translate-y-[-10px] group-hover:translate-y-0 transition-all duration-300">
+                          <button 
+                            className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-full shadow-md transition-colors duration-300 text-sm"
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              alert('Save clicked! (Not implemented on profile page yet)'); 
+                            }}
+                            aria-label="Save pin"
+                          >
+                            Save
+                          </button>
+                        </div>
+                        
+                        <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transform translate-y-[10px] group-hover:translate-y-0 transition-all duration-300 pointer-events-none w-[calc(100%-3rem)]">
+                          {image.title && (
+                            <p className="text-white font-bold text-md mb-1 truncate" title={image.title}>{image.title}</p>
                           )}
+                          <div className="flex items-center">
+                            {userProfile.profileImage && (
+                              <img 
+                                src={userProfile.profileImage} 
+                                alt={userProfile.username || 'User'} 
+                                className="w-6 h-6 rounded-full mr-2 border-2 border-white shadow-sm flex-shrink-0"
+                              />
+                            )}
+                            {userProfile.username && (
+                              <span className="text-white font-semibold text-xs truncate" title={userProfile.username}>{userProfile.username}</span>
+                            )}
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -423,14 +477,17 @@ export default function ProfilePage() {
           isOpen={isModalOpen} 
           setIsOpen={handleCloseModal}
           image={{
-            src: imageUrls[selectedPinForModal.id],
+            id: selectedPinForModal.id,
+            src: imageUrls[selectedPinForModal.id] || '',
             alt: selectedPinForModal.title || 'Pin image',
             height: 'auto',
-            username: userData?.username || user?.email?.split('@')[0] || 'User',
-            profileImage: profileData?.avatar_url || userProfile.profileImage,
+            username: userProfile.username,
+            profileImage: userProfile.profileImage,
             title: selectedPinForModal.title,
-            description: selectedPinForModal.description || 'No description provided.'
+            description: selectedPinForModal.description || 'No description provided.',
+            originalImageRecord: { storage_path: selectedPinForModal.storage_path }
           }}
+          onDeletePin={handleDeletePin}
         />
       )}
     </>

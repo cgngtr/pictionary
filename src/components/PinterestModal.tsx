@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, MouseEvent, KeyboardEvent } from 'react';
 // Dynamically import Lucide React icons to avoid SSR issues
 import dynamic from 'next/dynamic';
+import type { HomePageImageData } from '@/app/page'; // Assuming this type is suitable
 
 // Dynamically import icons with no SSR
 const X = dynamic(() => import('lucide-react').then(mod => mod.X), { ssr: false });
@@ -10,9 +11,17 @@ const Heart = dynamic(() => import('lucide-react').then(mod => mod.Heart), { ssr
 const Share2 = dynamic(() => import('lucide-react').then(mod => mod.Share2), { ssr: false });
 const Download = dynamic(() => import('lucide-react').then(mod => mod.Download), { ssr: false });
 const Bookmark = dynamic(() => import('lucide-react').then(mod => mod.Bookmark), { ssr: false });
-const MessageCircle = dynamic(() => import('lucide-react').then(mod => mod.MessageCircle), { ssr: false });
+const Trash2 = dynamic(() => import('lucide-react').then(mod => mod.Trash2), { ssr: false }); // Added Trash2 icon
+// const MessageCircle = dynamic(() => import('lucide-react').then(mod => mod.MessageCircle), { ssr: false }); // Not used, can be removed
 
-export default function PinterestModal({ isOpen, setIsOpen, image }) {
+interface PinterestModalProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  image: HomePageImageData | null; // Allow null if image might not be loaded initially
+  onDeletePin: (imageId: string, storagePath: string) => Promise<void>; // Function to handle deletion
+}
+
+export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }: PinterestModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
@@ -21,7 +30,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
   };
 
   // Close modal with Escape key
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: globalThis.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
@@ -30,7 +39,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
   // Add event listener for Escape key
   useEffect(() => {
     // Only run this effect on the client side
-    if (typeof window !== 'undefined') {
+    if (isOpen && typeof window !== 'undefined') {
       document.addEventListener('keydown', handleKeyDown);
       // Prevent scrolling on body when modal is open
       document.body.style.overflow = 'hidden';
@@ -41,7 +50,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
         document.body.style.overflow = 'auto';
       };
     }
-  }, []);
+  }, [isOpen]);
 
   const handleSave = () => {
     setIsSaved(!isSaved);
@@ -51,11 +60,28 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
     setIsLiked(!isLiked);
   };
 
-  if (!isOpen) {
+  const handleDelete = async () => {
+    if (!image || !image.id || !image.originalImageRecord?.storage_path) {
+      console.error('Cannot delete: image data or storage path is missing.');
+      alert('Could not delete pin. Required information is missing.');
+      return;
+    }
+    if (window.confirm('Are you sure you want to delete this pin?')) {
+      try {
+        await onDeletePin(image.id, image.originalImageRecord.storage_path);
+        setIsOpen(false); // Close modal after successful deletion
+      } catch (error) {
+        console.error('Error deleting pin from modal:', error);
+        alert('Failed to delete pin. Please try again.');
+      }
+    }
+  };
+
+  if (!isOpen || !image) {
     return null;
   }
 
-  const handleBackdropClick = (e) => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
     // Only close if the backdrop itself is clicked, not its children
     if (e.target === e.currentTarget) {
       setIsOpen(false);
@@ -66,56 +92,67 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
     <div 
       className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center p-4 z-50"
       onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pinterest-modal-title"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-screen overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-200 dark:border-gray-700">
         {/* Left: Image section */}
-        <div className="relative w-full md:w-3/5 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+        <div className="relative w-full md:w-3/5 bg-gray-100 dark:bg-gray-700 overflow-hidden aspect-[3/4]">
           <img 
-            src={image?.src || 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131'} 
-            alt={image?.alt || 'Pin image'} 
-            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+            src={image.src} 
+            alt={image.alt || 'Pin image'} 
+            className="w-full h-full object-cover"
           />
         </div>
 
         {/* Right: Content section */}
-        <div className="w-full md:w-2/5 p-6 flex flex-col h-full dark:bg-gray-800 dark:text-white">
+        <div className="w-full md:w-2/5 p-6 flex flex-col dark:bg-gray-800 dark:text-white overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <button 
-                className={`rounded-full p-2 ${isSaved ? 'bg-red-500 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200'}`}
-                onClick={handleSave}
+                title="Download"
+                className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
               >
-                <Bookmark size={18} />
+                {Download && <Download size={18} />}
               </button>
-              <button className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
-                <Share2 size={18} />
+              <button 
+                title="Share"
+                className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+              >
+                {Share2 && <Share2 size={18} />}
               </button>
-              <button className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
-                <Download size={18} />
+              <button 
+                title="Delete Pin"
+                onClick={handleDelete}
+                className="rounded-full p-2 bg-gray-100 hover:bg-red-100 text-red-500 dark:bg-gray-700 dark:hover:bg-red-800 dark:text-red-400"
+              >
+                {Trash2 && <Trash2 size={18} />}
               </button>
             </div>
             <button 
-              className="rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700" 
+              title="Close"
+              className="rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={handleClose}
             >
-              <X size={20} />
+              {X && <X size={20} />}
             </button>
           </div>
 
-          <h2 className="text-xl font-semibold mb-2">{image?.title || 'Beautiful Minimalist Design'}</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">{image?.description || 'Create a stunning space with these minimalist design tips that blend functionality and aesthetics.'}</p>
+          <h2 id="pinterest-modal-title" className="text-xl font-semibold mb-2 break-words">{image.title || 'Beautiful Minimalist Design'}</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4 break-words text-sm">{image.description || 'Create a stunning space with these minimalist design tips that blend functionality and aesthetics.'}</p>
 
           <div className="flex items-center mb-6">
-            <div className="h-10 w-10 rounded-full bg-gray-300 mr-3 overflow-hidden">
+            <div className="h-10 w-10 rounded-full bg-gray-300 mr-3 overflow-hidden flex-shrink-0">
               <img
-                src={image?.profileImage || 'https://randomuser.me/api/portraits/women/1.jpg'}
-                alt="User avatar"
+                src={image.profileImage || 'https://randomuser.me/api/portraits/women/1.jpg'}
+                alt={image.username || 'User avatar'}
                 className="h-10 w-10 rounded-full object-cover"
               />
             </div>
             <div>
-              <p className="font-medium">{image?.username || 'Sarah Johnson'}</p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Designer</p>
+              <p className="font-medium break-words">{image.username || 'Sarah Johnson'}</p>
+              {/* <p className="text-gray-500 dark:text-gray-400 text-sm">Designer</p> */}
             </div>
           </div>
 
@@ -128,11 +165,11 @@ export default function PinterestModal({ isOpen, setIsOpen, image }) {
                 className={`flex items-center gap-1 px-3 py-2 rounded-full ${isLiked ? 'bg-red-100 text-red-500 dark:bg-red-900 dark:text-red-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 onClick={handleLike}
               >
-                <Heart size={16} fill={isLiked ? "currentColor" : "none"} /> 
+                {Heart && <Heart size={16} fill={isLiked ? "currentColor" : "none"} />} 
                 <span className="text-sm">{isLiked ? '25' : '24'}</span>
               </button>
               <button 
-                className={`px-4 py-2 rounded-full ${isSaved ? 'bg-red-500 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'}`}
+                className={`px-4 py-2 rounded-full font-semibold ${isSaved ? 'bg-red-500 text-white' : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500'}`}
                 onClick={handleSave}
               >
                 {isSaved ? 'Saved' : 'Save'}
