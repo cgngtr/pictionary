@@ -26,6 +26,8 @@ CREATE TABLE images (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     storage_path TEXT NOT NULL,
     original_filename TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
     is_public BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
