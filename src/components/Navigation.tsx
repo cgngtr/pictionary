@@ -299,7 +299,8 @@ export default function Navigation({ onSearch }: NavigationProps) {
                           <Link href="/settings" legacyBehavior>
                             <a className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex w-full items-center rounded-xl mx-1.5 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-150`}>
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2.5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-1.003 1.11-.993l.557.008c.55-.01.988.45 1.11.993l.198.984c.07.344.149.68.242.998.186.627.452 1.208.788 1.739.27.42.612.797.997 1.112l.23.19c.362.3.795.52 1.25.649l.984.264c.542.145.912.67.826 1.208l-.01.046c-.09.542-.56 1.003-1.11.993l-.557-.008c-.55.01-.988-.45-1.11-.993l-.198-.984a7.703 7.703 0 00-.242-.998c-.186-.627-.452-1.208-.788-1.739a7.023 7.023 0 00-.997-1.112l-.23-.19a3.352 3.352 0 00-1.25-.649l-.984-.264c-.542-.145-.912-.67-.826-1.208l.01-.046zM15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                                <circle cx="12" cy="12" r="7.5" />
+                                <circle cx="12" cy="12" r="2.5" />
                               </svg>
                               Settings
                             </a>

@@ -14,6 +14,7 @@ type ProfileData = {
   user_id: string;
   description: string;
   avatar_url: string;
+  cover_image_url?: string;
 };
 
 type UserData = {
@@ -485,7 +486,7 @@ export default function ProfilePage() {
     username: userData?.username || user?.email?.split('@')[0] || '@user',
     bio: profileData?.description || 'No description available',
     profileImage: profileData?.avatar_url || 'https://source.unsplash.com/random/400x400/?portrait',
-    coverImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+    coverImage: profileData?.cover_image_url || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
     stats: {
       pins: userImages.length
     }
@@ -757,6 +758,7 @@ export default function ProfilePage() {
           user={user}
           currentDescription={profileData?.description || ''}
           currentAvatarUrl={profileData?.avatar_url || ''}
+          currentCoverImageUrl={profileData?.cover_image_url || null}
           onProfileUpdate={() => {
             handleProfileUpdate(); // Refresh profile data
             if (user) loadUserData(user.id); // Also refresh userData

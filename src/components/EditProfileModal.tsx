@@ -17,6 +17,7 @@ type EditProfileModalProps = {
   user: User | null;
   currentDescription: string;
   currentAvatarUrl: string;
+  currentCoverImageUrl?: string | null;
   onProfileUpdate: () => void;
 };
 
@@ -26,20 +27,29 @@ const EditProfileModal = ({
   user, 
   currentDescription, 
   currentAvatarUrl,
+  currentCoverImageUrl,
   onProfileUpdate 
 }: EditProfileModalProps) => {
   const [description, setDescription] = useState(currentDescription || '');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(currentAvatarUrl || null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(currentCoverImageUrl || null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
     setDescription(currentDescription || '');
     setAvatarPreview(currentAvatarUrl || null);
-  }, [currentDescription, currentAvatarUrl, isOpen]);
+    setCoverPreview(currentCoverImageUrl || null);
+    setAvatarFile(null);
+    setCoverFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (coverFileInputRef.current) coverFileInputRef.current.value = "";
+  }, [currentDescription, currentAvatarUrl, currentCoverImageUrl, isOpen]);
 
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
@@ -65,6 +75,21 @@ const EditProfileModal = ({
     }
   };
 
+  const handleCoverFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+      setCoverFile(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCoverPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError(null);
+    } else if (file) {
+      setError('Please select a valid JPG or PNG image for the cover.');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -74,68 +99,80 @@ const EditProfileModal = ({
     
     try {
       let avatarUrl = currentAvatarUrl;
+      let coverUrl = currentCoverImageUrl;
 
       // Upload new avatar if one was selected
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = fileName; // Store in images bucket, in avatars subfolder
+        const filePath = fileName;
 
-        // Log that we're using images bucket
-        console.log('EditProfile: Using existing images bucket for avatar storage');
-        
-        // Skip bucket creation as we'll use the existing images bucket
-        try {
-          // Upload to images bucket
-          console.log(`EditProfile: Uploading file to images/${filePath}...`);
-          const { error: uploadError } = await supabase.storage
-            .from('images') // Using images bucket instead of avatars
-            .upload(filePath, avatarFile, {
-              cacheControl: '3600',
-              upsert: true
-            });
+        console.log('EditProfile: Uploading avatar to images bucket...');
+        const { error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, avatarFile, { cacheControl: '3600', upsert: true });
             
-          if (uploadError) {
-            console.error('EditProfile: Upload error:', uploadError);
-            throw uploadError;
-          }
+        if (uploadError) throw uploadError;
           
-          console.log('EditProfile: File uploaded successfully, getting public URL...');
-          
-          // Get the public URL from images bucket
-          const { data: urlData } = await supabase.storage
-            .from('images') // Using images bucket
-            .getPublicUrl(filePath);
+        const { data: urlData } = await supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
             
-          if (urlData?.publicUrl) {
-            console.log(`EditProfile: Public URL acquired: ${urlData.publicUrl}`);
-            avatarUrl = urlData.publicUrl;
-          } else {
-            console.warn('EditProfile: No public URL returned from getPublicUrl');
-            
-            // Fallback - manually construct URL if we have NEXT_PUBLIC_SUPABASE_URL
-            if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-              avatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${filePath}`;
-              console.log(`EditProfile: Manually constructed URL: ${avatarUrl}`);
-            } else {
-              throw new Error('Could not generate a public URL for the uploaded avatar');
+        if (urlData?.publicUrl) {
+          avatarUrl = urlData.publicUrl;
+          // Attempt to delete old avatar if a new one is uploaded and an old one exists
+          if (currentAvatarUrl && currentAvatarUrl.includes(supabase.storage.from('images').getPublicUrl('').data.publicUrl)) {
+            const oldAvatarPath = currentAvatarUrl.substring(currentAvatarUrl.lastIndexOf('avatars/'));
+            if (oldAvatarPath !== filePath) { // Don't delete if it's somehow the same path
+                 await supabase.storage.from('images').remove([oldAvatarPath]);
+                 console.log('EditProfile: Old avatar deleted:', oldAvatarPath);
             }
           }
-        } catch (uploadErr: any) {
-          console.error('EditProfile: Upload error:', uploadErr);
-          
-          // If we're getting bucket not found with images bucket, this is a different problem
-          if (uploadErr.message?.includes('bucket not found')) {
-            console.error('EditProfile: Images bucket not found. This is unexpected as the app depends on this bucket.');
-            setError('Could not upload profile picture: The storage bucket does not exist.');
-            setIsLoading(false);
-            return;
+        } else {
+          if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+            avatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${filePath}`;
           } else {
-            throw uploadErr; // Re-throw any other errors
+            throw new Error('Could not generate a public URL for the uploaded avatar');
           }
         }
       }
 
+      // Upload new cover image if one was selected
+      if (coverFile) {
+        const fileExt = coverFile.name.split('.').pop();
+        const fileName = `covers/${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = fileName;
+
+        console.log('EditProfile: Uploading cover image to images bucket...');
+        const { error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, coverFile, { cacheControl: '3600', upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = await supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+
+        if (urlData?.publicUrl) {
+          coverUrl = urlData.publicUrl;
+          // Attempt to delete old cover image
+          if (currentCoverImageUrl && currentCoverImageUrl.includes(supabase.storage.from('images').getPublicUrl('').data.publicUrl)) {
+            const oldCoverPath = currentCoverImageUrl.substring(currentCoverImageUrl.lastIndexOf('covers/'));
+             if (oldCoverPath !== filePath) {
+                await supabase.storage.from('images').remove([oldCoverPath]);
+                console.log('EditProfile: Old cover image deleted:', oldCoverPath);
+             }
+          }
+        } else {
+          if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+            coverUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${filePath}`;
+          } else {
+            throw new Error('Could not generate a public URL for the uploaded cover image');
+          }
+        }
+      }
+      
       // First check if profile exists
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('profiles')
@@ -156,6 +193,7 @@ const EditProfileModal = ({
           .update({
             description,
             avatar_url: avatarUrl,
+            cover_image_url: coverUrl,
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
@@ -169,6 +207,7 @@ const EditProfileModal = ({
             user_id: user.id,
             description,
             avatar_url: avatarUrl,
+            cover_image_url: coverUrl,
             updated_at: new Date().toISOString()
           });
         
@@ -269,6 +308,49 @@ const EditProfileModal = ({
                     className="hidden"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400">JPG or PNG only</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Cover Image Upload Section */}
+            <div className="mb-8">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                Cover Picture
+              </label>
+              <div className="flex flex-col items-start gap-6">
+                <div className="relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-md bg-gray-100 dark:bg-gray-700">
+                  {coverPreview ? (
+                    <Image
+                      src={coverPreview}
+                      alt="Cover Preview"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <svg className="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col items-start mt-4">
+                  <button
+                    type="button"
+                    className="bg-indigo-600 text-white flex items-center gap-2 py-2 px-4 rounded-full shadow-sm text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-2"
+                    onClick={() => coverFileInputRef.current?.click()}
+                  >
+                    {Upload && <Upload size={16} />}
+                    Choose Cover Image
+                  </button>
+                  <input
+                    type="file"
+                    ref={coverFileInputRef}
+                    onChange={handleCoverFileChange}
+                    accept="image/jpeg, image/png"
+                    className="hidden"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">JPG or PNG. Recommended aspect ratio 16:9.</p>
                 </div>
               </div>
             </div>
