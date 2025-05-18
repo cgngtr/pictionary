@@ -270,8 +270,9 @@ export default function HomePage() {
   // Sayfa yüklenirken ve veri yoksa yükleme göster
   if (isLoading && allImages.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500"></div>
+        <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">Loading Pictionary...</p>
       </div>
     );
   }
@@ -280,10 +281,23 @@ export default function HomePage() {
     return (
       <>
         <Navigation onSearch={handleSearch} />
-        <div className="pt-6 min-h-screen flex flex-col items-center justify-center px-4">
-          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 p-4 rounded-md shadow w-full max-w-md">
-            <h2 className="text-red-700 dark:text-red-400 text-lg font-semibold mb-2">Error</h2>
-            <p className="text-red-600 dark:text-red-300">{pageError}</p>
+        <div className="pt-20 min-h-screen flex flex-col items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
+          <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 p-6 rounded-xl shadow-xl w-full max-w-lg text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-800/30 mb-4">
+              {/* Heroicon: ExclamationTriangle */}
+              <svg className="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Oops! Something went wrong.</h2>
+            <p className="text-gray-600 dark:text-gray-400">{pageError}</p>
+            <button
+              onClick={() => window.location.reload()} // Simple refresh action
+              className="mt-6 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+              aria-label="Try again"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </>
@@ -293,7 +307,7 @@ export default function HomePage() {
   return (
     <>
       <Navigation onSearch={handleSearch} />
-      <div className="pt-6">
+      <div className="pt-6 bg-gray-50 dark:bg-gray-900">
         <HomeClient 
           images={filteredImages} 
           onDelete={handleDeletePin} 

@@ -18,6 +18,7 @@ export default function CreatePage() {
   const supabase = createClient();
   
   useEffect(() => {
+    document.title = "Create New Pin | Pictionary";
     const setupStorage = async () => {
       setIsStorageReady(false);
       setError(null);
@@ -256,136 +257,162 @@ export default function CreatePage() {
     router.back();
   };
 
+  if (!isStorageReady && !isUploading) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 sm:p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Preparing Uploader...</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please wait a moment while we initialize the image uploader. If this takes too long, try refreshing the page.
+          </p>
+          {error && (
+            <div className="mt-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-3 rounded-md text-sm">
+              Error: {error}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="pt-20 pb-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 sm:p-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Create New Pin</h1>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 sm:p-8">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white mb-8 text-center sm:text-left">Create New Pin</h1>
         
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-4 rounded-md mb-6">
-            {error}
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700/50 p-4 rounded-lg mb-6 flex items-start">
+            <svg className="h-5 w-5 text-red-500 dark:text-red-400 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.707-4.293a1 1 0 001.414-1.414L10 10.586l.707-.707a1 1 0 00-1.414-1.414L8.586 10l-.707.707a1 1 0 001.414 1.414L10 11.414l.707.707A1 1 0 0010 14z" clipRule="evenodd" />
+            </svg>
+            <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
           </div>
         )}
         
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            {/* Image Upload Area */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Image
-              </label>
-              <div 
-                className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer
-                  ${preview ? 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-700/50' : 
-                  'border-gray-300 hover:border-red-500 dark:border-gray-600 dark:hover:border-red-400'}`}
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                {preview ? (
-                  <div className="relative w-full max-w-sm mx-auto aspect-square">
-                    <Image
-                      src={preview}
-                      alt="Image preview"
-                      fill
-                      className="rounded-md object-cover"
-                    />
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Upload Image
+            </label>
+            <div 
+              className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 ${preview ? 'border-gray-300 dark:border-gray-600' : 'border-gray-300 dark:border-gray-600 hover:border-red-400 dark:hover:border-red-500'} border-dashed rounded-xl cursor-pointer transition-colors duration-150 ease-in-out ${preview ? 'bg-gray-50 dark:bg-gray-700/30' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+              onClick={() => document.getElementById('file-upload')?.click()}
+              onDrop={(e) => { 
+                e.preventDefault(); 
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) { 
+                  setFile(e.dataTransfer.files[0]); 
+                  handleFileChange({ target: { files: e.dataTransfer.files } } as any);
+                }
+              }}
+              onDragOver={(e) => e.preventDefault()} // Necessary for onDrop to work
+            >
+              {preview ? (
+                <div className="relative w-full max-w-md mx-auto aspect-video sm:aspect-square rounded-lg overflow-hidden shadow-inner">
+                  <Image
+                    src={preview}
+                    alt="Selected image preview"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1 text-center py-4">
+                  <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                    <span className="relative bg-white dark:bg-gray-800 rounded-md font-medium text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-800 focus-within:ring-red-500">
+                      Click to upload a file
+                    </span>
+                    <p className="pl-1">or drag and drop</p>
                   </div>
-                ) : (
-                  <>
-                    <svg
-                      className="w-12 h-12 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      Click to upload an image or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                      PNG, JPG, GIF up to 10MB
-                    </p>
-                  </>
-                )}
-                <input
-                  id="file-upload"
-                  name="file"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="sr-only"
-                />
-              </div>
-            </div>
-
-            {/* Title Field */}
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Title
-              </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    PNG, JPG, GIF up to 10MB. Recommended: Square or Vertical.
+                  </p>
+                </div>
+              )}
               <input
-                type="text"
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
-                placeholder="Give your pin a title"
-                required
+                id="file-upload"
+                name="file"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="sr-only"
               />
             </div>
+          </div>
 
-            {/* Description Field */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Description
-              </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-white"
-                placeholder="Tell everyone what your pin is about"
-              />
-            </div>
+          {/* Title Field */}
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-red-500 focus:ring-red-500 dark:bg-gray-700 dark:text-white sm:text-sm placeholder-gray-400 dark:placeholder-gray-500"
+              placeholder="e.g. Amazing Sunset Over Mountains"
+              required
+            />
+          </div>
 
-            {/* Visibility Toggle */}
-            <div className="flex items-center">
-              <input
-                id="is-public"
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-              />
-              <label htmlFor="is-public" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                Make this pin public
-              </label>
-            </div>
+          {/* Description Field */}
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-red-500 focus:ring-red-500 dark:bg-gray-700 dark:text-white sm:text-sm placeholder-gray-400 dark:placeholder-gray-500"
+              placeholder="Optional: Share more details about your pin..."
+            />
+          </div>
+
+          {/* Visibility Toggle */}
+          <div className="flex items-center pt-2">
+            <input
+              id="is-public"
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 dark:border-gray-600 rounded"
+            />
+            <label htmlFor="is-public" className="ml-3 block text-sm text-gray-700 dark:text-gray-300">
+              Make this pin public (discoverable by others)
+            </label>
+          </div>
             
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                disabled={isUploading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Upload Pin'}
-              </button>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700/50">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-red-500 transition-colors"
+              disabled={isUploading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-red-600 border border-transparent rounded-lg shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-red-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              disabled={isUploading || !isStorageReady} // Also disable if storage isn't ready
+            >
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Uploading...
+                </>
+              ) : 'Upload Pin'}
+            </button>
           </div>
         </form>
       </div>

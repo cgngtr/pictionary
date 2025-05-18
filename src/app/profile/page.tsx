@@ -491,43 +491,71 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !isSessionChecked) { // Show main loader only during initial session check
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500"></div>
+        <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">Loading Profile...</p>
       </div>
     );
   }
   
-  if (error) { // Display general page errors prominently
+  if (error && !user) { // Show full page error if user context is not established
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold text-red-500 mb-4">Error</h1>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <button onClick={() => router.refresh()} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">
-          Try Again
-        </button>
+      <div className="pt-20 min-h-screen flex flex-col items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
+        <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 p-6 rounded-xl shadow-xl w-full max-w-lg text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-800/30 mb-4">
+            <svg className="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Oops! Profile Error.</h2>
+          <p className="text-gray-600 dark:text-gray-400">{error}</p>
+          <button
+            onClick={() => router.refresh()} // Refresh to retry
+            className="mt-6 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+            aria-label="Try again"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
-    // This case should ideally be handled by the redirect in setupProfilePage or middleware
-    // but as a fallback:
+  if (!user && isSessionChecked) { // If session checked and still no user (e.g. redirected but component still tries to render)
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold text-gray-700 mb-4">Redirecting to login...</h1>
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-500"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
+        <h1 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">Redirecting to login...</h1>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-500 dark:border-gray-400"></div>
       </div>
     );
   }
-  
-  // For debugging imageUrls state during render:
-  // console.log('ProfilePage: Rendering with imageUrls:', imageUrls);
+
+  // Inline error display if user is loaded but there's a non-critical error (e.g. image loading partial failure)
+  const renderInlineError = () => (
+    error && user && (
+      <div className="my-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 rounded-md shadow">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            {/* Heroicon: ExclamationTriangle (Yellow) */}
+            <svg className="h-5 w-5 text-yellow-400 dark:text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              {error} <button onClick={() => setError(null)} className="ml-2 font-medium underline hover:text-yellow-600 dark:hover:text-yellow-200">Dismiss</button>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  );
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 -mt-16">
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 -mt-16"> {/* Adjusted background slightly */}
         <div className="relative w-full h-[300px] md:h-[400px]">
           <Image
             src={userProfile.coverImage}
@@ -536,44 +564,55 @@ export default function ProfilePage() {
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" /> {/* Enhanced gradient */}
         </div>
 
-        {/* Error display specific to image loading could be added here if needed */}
+        {/* Potential inline error display area */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {renderInlineError()}
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative -mt-32 pb-8">
+          <div className="relative -mt-32 pb-8"> {/* This -mt-32 pulls the content up */}
             <div className="relative z-10">
-              <div className="relative w-40 h-40 mx-auto md:mx-0 rounded-full border-4 border-white overflow-hidden shadow-xl">
+              <div className="relative w-36 h-36 md:w-40 md:h-40 mx-auto md:mx-0 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden shadow-xl group">
                 <Image
                   src={userProfile.profileImage}
                   alt={userProfile.name}
                   fill
-                  className="object-cover"
+                  className="object-cover group-hover:brightness-90 transition-all duration-300"
                   priority
                 />
+                <button
+                  onClick={() => setIsEditProfileModalOpen(true)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white text-sm font-medium"
+                  aria-label="Edit profile picture"
+                >
+                  Edit
+                </button>
               </div>
             </div>
 
-            <div className="mt-6 text-center md:text-left md:flex md:justify-between md:items-center">
-              <div>
-                <h1 className="text-4xl font-bold text-gray-900">{userProfile.name}</h1>
-                <p className="mt-1 text-xl text-gray-600">{user.email}</p>
-                <p className="mt-4 text-lg text-gray-800 max-w-2xl">{userProfile.bio}</p>
+            <div className="mt-6 text-center md:text-left md:flex md:items-start md:justify-between"> {/* Changed to items-start */}
+              <div className="md:flex-1">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{userProfile.name}</h1>
+                <p className="mt-1 text-lg md:text-xl text-gray-600 dark:text-gray-400">{user?.email}</p> {/* Use optional chaining for user */}
+                <p className="mt-3 text-md md:text-lg text-gray-700 dark:text-gray-300 max-w-2xl leading-relaxed">{userProfile.bio}</p>
 
-                <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-8">
+                <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-x-8 gap-y-4">
                   <div className="text-center md:text-left">
-                    <p className="text-3xl font-bold text-gray-900">{userProfile.stats.pins}</p>
-                    <p className="text-sm font-medium text-gray-600">Pins</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{userProfile.stats.pins}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pins</p>
                   </div>
+                  {/* Add more stats here if available e.g. Followers, Following */}
                 </div>
               </div>
               
-              <div className="mt-6 md:mt-0">
+              <div className="mt-6 md:mt-2 md:ml-6 flex-shrink-0"> {/* Adjusted margin */}
                 <button
                   onClick={() => setIsEditProfileModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  aria-label="Edit profile"
+                  className="px-6 py-2.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900 shadow-md hover:shadow-lg"
+                  aria-label="Edit profile details"
                   tabIndex={0}
                 >
                   Edit Profile
@@ -582,24 +621,37 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-12 pb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Created Pins</h2>
-            {userImages.length === 0 && !isLoading ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600 mb-4">No pins created yet</p>
-                <button 
-                  onClick={() => router.push('/create')}
-                  className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                >
-                  Create Your First Pin
-                </button>
+          <div className="mt-10 pb-16"> {/* Adjusted spacing */}
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-6 sm:mb-8">My Creations</h2> {/* Changed title, added dark mode */}
+            {isLoading && userImages.length === 0 ? ( // Show spinner if loading images specifically
+               <div className="flex justify-center items-center py-12">
+                 <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500"></div>
+               </div>
+            ) : userImages.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No pins created yet</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start by creating your first visual masterpiece!</p>
+                <div className="mt-6">
+                  <button 
+                    onClick={() => router.push('/create')}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-full text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-800"
+                  >
+                    <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    Create Pin
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 md:gap-6"> {/* Added xl, adjusted gap */}
                 {userImages.map((image) => (
                   <div 
                     key={image.id} 
-                    className="group relative aspect-[3/4] rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                    className="group relative aspect-[3/4] rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-200 dark:bg-gray-800" // Added base bg for loading
                     onClick={() => handlePinClick(image)}
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && handlePinClick(image)}
@@ -607,21 +659,25 @@ export default function ProfilePage() {
                   >
                     {imageUrls[image.id] ? (
                       <>
-                        <img
+                        <Image
                           src={imageUrls[image.id]}
                           alt={image.title || 'Pin image'}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          fill // Use fill for aspect ratio container
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
                             console.error(`ProfilePage: Error loading image ID ${image.id} from URL ${imageUrls[image.id]}`);
-                            (e.target as HTMLImageElement).onerror = null;
-                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x600?text=Image+Load+Error';
+                            (e.target as HTMLImageElement).onerror = null; // Prevent infinite loop
+                            // Consider a more robust placeholder system, but for now a class change
+                            e.currentTarget.parentElement?.classList.add('image-error-placeholder'); 
+                            e.currentTarget.src = 'https://via.placeholder.com/400x600?text=Error'; // Fallback visible error
                           }}
                         />
-                        <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none"></div>
+                        {/* Overlay and text elements */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transform translate-y-[-10px] group-hover:translate-y-0 transition-all duration-300">
+                        <div className="absolute top-2 right-2 md:top-3 md:right-3 opacity-0 group-hover:opacity-100 transform translate-y-[-10px] group-hover:translate-y-0 transition-all duration-300">
                           <button 
-                            className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-full shadow-md transition-colors duration-300 text-sm"
+                            className="bg-white/90 hover:bg-white text-red-500 font-semibold py-1.5 px-3 md:py-2 md:px-4 rounded-full shadow-md hover:shadow-lg transition-all duration-300 text-xs md:text-sm"
                             onClick={(e) => {
                               e.stopPropagation(); 
                               alert('Save clicked! (Not implemented on profile page yet)'); 
@@ -632,29 +688,32 @@ export default function ProfilePage() {
                           </button>
                         </div>
                         
-                        <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transform translate-y-[10px] group-hover:translate-y-0 transition-all duration-300 pointer-events-none w-[calc(100%-3rem)]">
+                        <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                           {image.title && (
-                            <p className="text-white font-bold text-md mb-1 truncate" title={image.title}>{image.title}</p>
+                            <p className="text-white font-bold text-sm md:text-md mb-1 truncate" title={image.title}>{image.title}</p>
                           )}
                           <div className="flex items-center">
-                            {userProfile.profileImage && (
+                            {userProfile.profileImage && ( // This will show current user's image, not pin creator's, might be intended
                               <img 
                                 src={userProfile.profileImage} 
                                 alt={userProfile.username || 'User'} 
-                                className="w-6 h-6 rounded-full mr-2 border-2 border-white shadow-sm flex-shrink-0"
+                                className="w-5 h-5 md:w-6 md:h-6 rounded-full mr-2 border border-white/50 shadow-sm flex-shrink-0"
                               />
                             )}
                             {userProfile.username && (
-                              <span className="text-white font-semibold text-xs truncate" title={userProfile.username}>{userProfile.username}</span>
+                              <span className="text-white font-semibold text-xs md:text-sm truncate" title={userProfile.username}>{userProfile.username}</span>
                             )}
                           </div>
                         </div>
                       </>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                        <div className="animate-pulse text-gray-400">Loading...</div>
-                        {!image.storage_path && <p className="text-xs text-red-400">Missing storage_path</p>}
-                        {image.storage_path && !bucketExists && <p className="text-xs text-red-400">Bucket not ready</p>}
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                        <svg className="w-10 h-10 animate-pulse text-gray-300 dark:text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        <p className="mt-2 text-xs">Loading image...</p>
+                        {!image.storage_path && <p className="text-xs text-red-400 dark:text-red-500 mt-1">Missing path</p>}
+                        {image.storage_path && !bucketExists && <p className="text-xs text-red-400 dark:text-red-500 mt-1">Bucket issues</p>}
                       </div>
                     )}
                   </div>
@@ -672,16 +731,21 @@ export default function ProfilePage() {
           setIsOpen={handleCloseModal}
           image={{
             id: selectedPinForModal.id,
-            src: imageUrls[selectedPinForModal.id] || '',
+            src: imageUrls[selectedPinForModal.id] || '', // Ensure src is not empty
             alt: selectedPinForModal.title || 'Pin image',
-            height: 'auto',
+            height: 'auto', // Modal might adjust this
             username: userProfile.username,
             profileImage: userProfile.profileImage,
-            title: selectedPinForModal.title,
-            description: selectedPinForModal.description || 'No description provided.',
-            originalImageRecord: { storage_path: selectedPinForModal.storage_path }
+            title: selectedPinForModal.title || 'Untitled Pin', // Ensure title
+            description: selectedPinForModal.description || 'No description available.', // Ensure description
+            originalImageRecord: { 
+                storage_path: selectedPinForModal.storage_path, 
+                user_id: selectedPinForModal.user_id, // Pass user_id to modal if needed for auth checks
+                id: selectedPinForModal.id // Pass id to modal
+            }
           }}
           onDeletePin={handleDeletePin}
+          // currentUser={user} // Pass current user if modal needs to check ownership for delete
         />
       )}
 
@@ -693,7 +757,10 @@ export default function ProfilePage() {
           user={user}
           currentDescription={profileData?.description || ''}
           currentAvatarUrl={profileData?.avatar_url || ''}
-          onProfileUpdate={handleProfileUpdate}
+          onProfileUpdate={() => {
+            handleProfileUpdate(); // Refresh profile data
+            if (user) loadUserData(user.id); // Also refresh userData
+          }}
         />
       )}
     </>
