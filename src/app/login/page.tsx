@@ -8,6 +8,9 @@ import { User } from '@supabase/supabase-js';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,16 +74,38 @@ export default function LoginPage() {
 
       if (isSignUp) {
         console.log("Sign up flow started");
-        const { data, error } = await supabase.auth.signUp({
+        if (!username || !firstName || !lastName) {
+          throw new Error("Username, first name, and last name are required for sign up.");
+        }
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           }
         });
-        console.log("Sign up result:", { success: !error, error: error?.message });
-        if (error) throw error;
-        setError('Registration successful! Please check your email to verify your account.');
+        console.log("Sign up result:", { success: !authError, error: authError?.message });
+        if (authError) throw authError;
+
+        if (authData.user) {
+          const { error: userInsertError } = await supabase
+            .from('users')
+            .insert({ 
+              id: authData.user.id, 
+              username, 
+              first_name: firstName, 
+              last_name: lastName 
+            });
+
+          if (userInsertError) {
+            console.error("Error inserting into custom users table:", userInsertError);
+            throw new Error(`Registration partially failed: ${userInsertError.message}. Please contact support.`);
+          }
+          alert('Registration successful! Please check your email to verify your account.');
+          router.push('/finish-profile');
+        } else {
+          throw new Error('Registration succeeded but no user data was returned. Please try again.');
+        }
       } else {
         console.log("Sign in flow started");
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -110,7 +135,10 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-gray-600">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             <button
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
               className="ml-1 font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none"
             >
               {isSignUp ? 'Sign in' : 'Sign up'}
@@ -120,6 +148,58 @@ export default function LoginPage() {
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
+            {isSignUp && (
+              <>
+                <div>
+                  <label htmlFor="username" className="sr-only">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    required={isSignUp}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    placeholder="Username"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="first-name" className="sr-only">
+                    First Name
+                  </label>
+                  <input
+                    id="first-name"
+                    name="first-name"
+                    type="text"
+                    autoComplete="given-name"
+                    required={isSignUp}
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    placeholder="First Name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="last-name" className="sr-only">
+                    Last Name
+                  </label>
+                  <input
+                    id="last-name"
+                    name="last-name"
+                    type="text"
+                    autoComplete="family-name"
+                    required={isSignUp}
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    placeholder="Last Name"
+                  />
+                </div>
+              </>
+            )}
             <div>
               <label htmlFor="email-address" className="sr-only">
                 Email address
@@ -132,7 +212,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${isSignUp ? '' : 'rounded-t-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                 placeholder="Email address"
               />
             </div>

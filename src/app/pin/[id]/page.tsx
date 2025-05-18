@@ -46,7 +46,7 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
       // console.log('Fetched data from Supabase:', data); // Removed for cleanliness
       
       let username = 'User not found';
-      let profileImage = 'https://randomuser.me/api/portraits/lego/1.jpg'; // Default avatar
+      let profileImage = 'https://st3.depositphotos.com/6672868/13701/v/450/depositphotos_137014128-stock-illustration-user-profile-icon.jpg'; // Generic default avatar
 
       if (data.user_id) {
         // Fetch username from your custom 'users' table

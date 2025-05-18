@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, MouseEvent, KeyboardEvent } from 'react';
+import React, { useState, useEffect, MouseEvent, KeyboardEvent, useCallback } from 'react';
 // Dynamically import Lucide React icons to avoid SSR issues
 import dynamic from 'next/dynamic';
 import type { HomePageImageData } from '@/app/page'; // Assuming this type is suitable
@@ -27,32 +27,27 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
   const [isLiked, setIsLiked] = useState(false);
   const [isCopied, setIsCopied] = useState(false); // State for copy feedback
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsOpen(false);
-  };
+  }, [setIsOpen]);
 
-  // Close modal with Escape key
-  const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  };
+  }, [setIsOpen]);
 
-  // Add event listener for Escape key
   useEffect(() => {
-    // Only run this effect on the client side
     if (isOpen && typeof window !== 'undefined') {
       document.addEventListener('keydown', handleKeyDown);
-      // Prevent scrolling on body when modal is open
       document.body.style.overflow = 'hidden';
       
       return () => {
         document.removeEventListener('keydown', handleKeyDown);
-        // Restore scrolling when modal is closed
         document.body.style.overflow = 'auto';
       };
     }
-  }, [isOpen]);
+  }, [isOpen, handleKeyDown]);
 
   const handleSave = () => {
     setIsSaved(!isSaved);
@@ -97,16 +92,45 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     }
   };
 
+  const handleDownload = async () => {
+    if (!image || !image.src) {
+      console.error('Cannot download: image source is missing.');
+      alert('Could not download image. Source is missing.');
+      return;
+    }
+
+    try {
+      const response = await fetch(image.src);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      // Try to get a file extension from the src or default to .jpg
+      const fileExtension = image.src.split('.').pop() || 'jpg';
+      const fileName = image.title ? `${image.title}.${fileExtension}` : `download.${fileExtension}`;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      alert('Failed to download image. Please try again.');
+    }
+  };
+
   if (!isOpen || !image) {
     return null;
   }
 
-  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
-    // Only close if the backdrop itself is clicked, not its children
+  const handleBackdropClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       setIsOpen(false);
     }
-  };
+  }, [setIsOpen]);
 
   return (
     <div 
@@ -132,6 +156,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
             <div className="flex gap-2 items-center">
               <button 
                 title="Download"
+                onClick={handleDownload}
                 className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
               >
                 {Download && <Download size={18} />}

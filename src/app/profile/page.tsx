@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/utils';
 // import { removeStorageRLS } from '@/lib/supabase/remove-storage-rls'; // Removed
 import { User } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import PinterestModal from '@/components/PinterestModal';
 
 type ProfileData = {
@@ -46,6 +46,7 @@ export default function ProfilePage() {
   const [selectedPinForModal, setSelectedPinForModal] = useState<ImageData | null>(null);
   const router = useRouter();
   const supabase = createClient();
+  const pathname = usePathname();
 
   useEffect(() => {
     const setupProfilePage = async () => {
@@ -117,7 +118,10 @@ export default function ProfilePage() {
             .select('*')
             .eq('id', session.user.id)
             .single();
-          if (userError) throw userError;
+          if (userError && userError.code !== 'PGRST116') {
+            console.error('ProfilePage: Error fetching from users table:', userError);
+            throw userError;
+          }
           setUserData(userDataFromTable);
 
           const { data: profileDataFromTable, error: profileError } = await supabase
@@ -125,9 +129,30 @@ export default function ProfilePage() {
             .select('*')
             .eq('user_id', session.user.id) // Assuming user_id in profiles matches auth.users.id
             .single();
-          if (profileError && profileError.code !== 'PGRST116') throw profileError; // PGRST116: 0 rows
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('ProfilePage: Error fetching from profiles table:', profileError);
+            throw profileError;
+          }
           setProfileData(profileDataFromTable);
           
+          // Check if essential data is missing and redirect or prompt
+          if (!userDataFromTable) {
+            // This is unexpected if sign-up flow is correct
+            console.warn('ProfilePage: User data missing from \'users\' table. User may need to re-register or contact support.');
+            setError('Critical user information is missing. Please try signing out and in, or contact support if the issue persists.');
+            // Potentially, don't try to fetch images or do further setup if core user data is absent
+            setIsLoading(false);
+            return; // Stop further execution in setupProfilePage for this case
+          }
+
+          if (!profileDataFromTable && pathname !== '/finish-profile') {
+            // If profile data is missing and we are not already on the finish-profile page
+            console.log('ProfilePage: Profile data missing, redirecting to /finish-profile');
+            router.push('/finish-profile');
+            // No need to setIsLoading(false) here as the push will trigger a re-render or new page load.
+            return; // Stop further execution in setupProfilePage for this case
+          }
+
           // Fetch images only if bucket setup was successful
           if (bucketExists || (bucketInfo && bucketInfo.public)) { // Check bucketExists OR if bucketInfo shows it's okay
              console.log('ProfilePage: Bucket ready, fetching user images for user ID:', session.user.id);

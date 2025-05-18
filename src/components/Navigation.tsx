@@ -26,87 +26,86 @@ export default function Navigation() {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    const getUser = async () => {
+    setIsLoading(true);
+
+    const performDataFetchForUser = async (userId: string) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          
-          // First, get user data from users table
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (userError) {
-            console.error('Error fetching user data for navigation:', userError);
-            return;
-          }
-          
-          setUserData(userData);
-          
-          // Then, get profile data using user ID
-          const { data: profileData, error: profileError } = await supabase
+        const { data: fetchedUserData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (userError && userError.code !== 'PGRST116') {
+          console.error('Error fetching user data in performDataFetchForUser:', userError);
+          setUserData(null);
+          setProfileData(null);
+          return;
+        }
+        setUserData(fetchedUserData || null);
+
+        if (fetchedUserData) {
+          const { data: fetchedProfileData, error: profileError } = await supabase
             .from('profiles')
             .select('*')
-            .eq('user_id', userData.id)
+            .eq('user_id', fetchedUserData.id)
             .single();
-            
+
           if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching profile data for navigation:', profileError);
+            console.error('Error fetching profile data in performDataFetchForUser:', profileError);
+            setProfileData(null);
           } else {
-            setProfileData(profileData);
+            setProfileData(fetchedProfileData || null);
           }
+        } else {
+          setProfileData(null);
         }
       } catch (error) {
-        console.error('Error getting user session for navigation:', error);
+        console.error('Exception during data fetch in performDataFetchForUser:', error);
+        setUserData(null);
+        setProfileData(null);
       }
     };
-    getUser();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (currentSession?.user) {
+        setUser(currentSession.user);
+        await performDataFetchForUser(currentSession.user.id);
+      } else {
+        setUser(null);
+        setUserData(null);
+        setProfileData(null);
+      }
+      setIsLoading(false);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log(`Navigation Auth Event: ${event}`);
-      
+      setIsLoading(true);
+
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setUserData(null);
         setProfileData(null);
         router.refresh();
-      } else if (session?.user) {
-        setUser(session.user);
-        
-        // Get user and profile data on auth change
-        supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data, error }) => {
-            if (error) {
-              console.error('Error fetching user data on auth change:', error);
-              return;
-            }
-            
-            setUserData(data);
-            
-            // Then get profile data
-            supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', data.id)
-              .single()
-              .then(({ data: profileData }) => {
-                setProfileData(profileData);
-              });
-          });
+      } else if (newSession?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        setUser(newSession.user);
+        await performDataFetchForUser(newSession.user.id);
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          router.refresh();
+        }
+      } else if (event === 'INITIAL_SESSION' && !newSession?.user) {
+        setUser(null);
+        setUserData(null);
+        setProfileData(null);
       }
+      setIsLoading(false);
     });
 
     return () => {
@@ -139,7 +138,7 @@ export default function Navigation() {
       ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || user?.email?.split('@')[0] || 'Guest'
       : user?.email?.split('@')[0] || 'Guest',
     email: user?.email || '',
-    profileImage: profileData?.avatar_url || 'https://source.unsplash.com/random/100x100/?portrait'
+    profileImage: profileData?.avatar_url || 'https://st3.depositphotos.com/6672868/13701/v/450/depositphotos_137014128-stock-illustration-user-profile-icon.jpg'
   };
 
   const goToProfile = () => {
@@ -225,7 +224,7 @@ export default function Navigation() {
                     alt={userProfile.name}
                     width={32}
                     height={32}
-                    className="rounded-full"
+                    className="w-8 h-8 rounded-full object-cover"
                   />
                 </button>
                 
@@ -311,7 +310,7 @@ export default function Navigation() {
                       alt={userProfile.name}
                       width={32}
                       height={32}
-                      className="rounded-full"
+                      className="w-8 h-8 rounded-full object-cover"
                     />
                   </button>
                   <div>

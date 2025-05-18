@@ -13,7 +13,7 @@ CREATE TABLE users (
 -- Create Profiles table for additional user information
 CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     description TEXT,
     avatar_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -38,13 +38,14 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE images ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for Users table
-CREATE POLICY "Users can view their own profile"
-    ON users FOR SELECT
-    USING (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile"
-    ON users FOR UPDATE
-    USING (auth.uid() = id);
+-- POLICIES FOR 'users' TABLE ARE NOW DEFINED IN 20240320000003_storage_policies.sql
+-- CREATE POLICY "Users can view their own profile"
+--     ON users FOR SELECT
+--     USING (auth.uid() = id);
+-- 
+-- CREATE POLICY "Users can update their own profile"
+--     ON users FOR UPDATE
+--     USING (auth.uid() = id);
 
 -- Create policies for Profiles table
 CREATE POLICY "Users can view their own profile information"
@@ -53,7 +54,8 @@ CREATE POLICY "Users can view their own profile information"
 
 CREATE POLICY "Users can update their own profile information"
     ON profiles FOR UPDATE
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own profile information"
     ON profiles FOR INSERT
@@ -70,7 +72,8 @@ CREATE POLICY "Users can insert their own images"
 
 CREATE POLICY "Users can update their own images"
     ON images FOR UPDATE
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own images"
     ON images FOR DELETE

@@ -160,3 +160,98 @@ BEGIN
     UPDATE storage.buckets SET public = true WHERE name = 'images';
   END IF;
 END $$; 
+
+--
+-- RLS Policies for the custom 'users' table
+--
+
+-- Enable Row Level Security for the 'users' table if not already enabled
+-- ALTER TABLE public.users ENABLE ROW LEVEL SECURITY; -- This line is redundant, RLS enabled in create_tables.sql
+
+-- Remove existing policies if they might conflict (optional, uncomment if needed)
+-- DROP POLICY IF EXISTS "Allow individual user insert" ON public.users; -- This line and the following DROP lines should remain commented unless explicitly needed
+-- DROP POLICY IF EXISTS "Allow individual user select" ON public.users;
+-- DROP POLICY IF EXISTS "Allow individual user update" ON public.users;
+-- DROP POLICY IF EXISTS "Allow individual user delete" ON public.users;
+
+-- Policy: Allow users to insert their own record into the 'users' table.
+-- The 'id' in the 'users' table must match the authenticated user's ID.
+CREATE POLICY "Allow individual user insert"
+ON public.users
+FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = id);
+
+-- Policy: Allow users to select their own record from the 'users' table.
+DROP POLICY IF EXISTS "Allow individual user select" ON public.users;
+CREATE POLICY "Allow authenticated users to select user data"
+ON public.users
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Policy: Allow users to update their own record in the 'users' table.
+CREATE POLICY "Allow individual user update"
+ON public.users
+FOR UPDATE
+TO authenticated
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+-- Policy: (Optional) Allow users to delete their own record from the 'users' table.
+-- Consider if users should be able to delete their own 'users' table entry.
+-- This does NOT delete their auth.users entry.
+CREATE POLICY "Allow individual user delete"
+ON public.users
+FOR DELETE
+TO authenticated
+USING (auth.uid() = id); 
+
+--
+-- RLS Policies for the custom 'profiles' table
+--
+
+-- Enable Row Level Security for the 'profiles' table
+-- Assuming 'profiles' table is created in '20240320000001_create_tables.sql'
+-- If RLS is already enabled there, this line is redundant but harmless.
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Remove existing policies if they might conflict (optional, uncomment if needed)
+-- DROP POLICY IF EXISTS "Allow individual profile insert" ON public.profiles;
+-- DROP POLICY IF EXISTS "Allow authenticated users to select profile data" ON public.profiles;
+-- DROP POLICY IF EXISTS "Allow individual profile update" ON public.profiles;
+-- DROP POLICY IF EXISTS "Allow individual profile delete" ON public.profiles;
+
+-- Policy: Allow users to insert their own record into the 'profiles' table.
+-- The 'user_id' in the 'profiles' table must match the authenticated user's ID.
+DROP POLICY IF EXISTS "Allow individual profile insert" ON public.profiles;
+CREATE POLICY "Allow individual profile insert"
+ON public.profiles
+FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Allow authenticated users to select any profile data from the 'profiles' table.
+DROP POLICY IF EXISTS "Allow authenticated users to select profile data" ON public.profiles;
+CREATE POLICY "Allow authenticated users to select profile data"
+ON public.profiles
+FOR SELECT
+TO authenticated
+USING (true); -- Allows any authenticated user to read any profile
+
+-- Policy: Allow users to update their own record in the 'profiles' table.
+DROP POLICY IF EXISTS "Allow individual profile update" ON public.profiles;
+CREATE POLICY "Allow individual profile update"
+ON public.profiles
+FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Allow users to delete their own record from the 'profiles' table.
+DROP POLICY IF EXISTS "Allow individual profile delete" ON public.profiles;
+CREATE POLICY "Allow individual profile delete"
+ON public.profiles
+FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id); 

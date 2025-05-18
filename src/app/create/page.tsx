@@ -13,90 +13,83 @@ export default function CreatePage() {
   const [isPublic, setIsPublic] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStorageReady, setIsStorageReady] = useState(false);
   const router = useRouter();
   const supabase = createClient();
   
   useEffect(() => {
     const setupStorage = async () => {
+      setIsStorageReady(false);
+      setError(null);
       try {
         console.log('CreatePage: Attempting to ensure RLS on storage.buckets...');
         const { data: rlsBucketsData, error: rlsBucketsError } = await supabase.rpc('ensure_rls_on_storage_buckets');
         if (rlsBucketsError) {
-          console.error('CreatePage: RPC call to ensure_rls_on_storage_buckets failed (network/PostgREST error):', rlsBucketsError);
-        } else if (rlsBucketsData && !rlsBucketsData.success) {
-          console.warn('CreatePage: RPC ensure_rls_on_storage_buckets did not succeed:', rlsBucketsData.message);
-        } else if (rlsBucketsData && rlsBucketsData.success) {
-          console.log('CreatePage: RPC ensure_rls_on_storage_buckets reported success:', rlsBucketsData.message);
+          console.error('CreatePage: RPC call to ensure_rls_on_storage_buckets failed:', rlsBucketsError);
+          setError(`Storage setup error (RPC rlsBuckets): ${rlsBucketsError.message}`);
+          return;
+        } 
+        if (!rlsBucketsData || !rlsBucketsData.success) {
+          console.warn('CreatePage: RPC ensure_rls_on_storage_buckets did not succeed:', rlsBucketsData?.message);
+          setError(`Storage setup error (RPC rlsBuckets): ${rlsBucketsData?.message || 'Unknown RPC error'}`);
+          return;
         }
+        console.log('CreatePage: RPC ensure_rls_on_storage_buckets reported success:', rlsBucketsData.message);
 
         console.log('CreatePage: Attempting to manage images bucket publicity...');
-        const { data: rpcData, error: rpcError } = await supabase.rpc('manage_images_bucket_publicity');
-
-        if (rpcError) {
-          console.error('CreatePage: RPC call to manage_images_bucket_publicity failed (network/PostgREST error):', rpcError);
-          setError(`Failed to initialize storage (RPC error): ${rpcError.message}`);
+        const { data: rpcPublicityData, error: rpcPublicityError } = await supabase.rpc('manage_images_bucket_publicity');
+        if (rpcPublicityError) {
+          console.error('CreatePage: RPC call to manage_images_bucket_publicity failed:', rpcPublicityError);
+          setError(`Storage setup error (RPC publicity): ${rpcPublicityError.message}`);
           return;
         }
-
-        if (!rpcData || !rpcData.success) {
-          console.error('CreatePage: RPC call manage_images_bucket_publicity did not succeed:', rpcData?.message || 'No message from RPC.');
-          setError(`Failed to initialize storage (RPC execution failed): ${rpcData?.message || 'Unknown RPC error'}`);
+        if (!rpcPublicityData || !rpcPublicityData.success) {
+          console.error('CreatePage: RPC call manage_images_bucket_publicity did not succeed:', rpcPublicityData?.message);
+          setError(`Storage setup error (RPC publicity): ${rpcPublicityData?.message || 'Unknown RPC error'}`);
           return;
         }
-        console.log('CreatePage: RPC manage_images_bucket_publicity reported success:', rpcData.message);
+        console.log('CreatePage: RPC manage_images_bucket_publicity reported success:', rpcPublicityData.message);
 
-        // Bucket kontrolü ve oluşturma
         console.log('CreatePage: Checking if bucket "images" exists...');
         const { data: bucketInfo, error: getBucketError } = await supabase.storage.getBucket('images');
         
         if (getBucketError) {
-          if (getBucketError.message && getBucketError.message.toLowerCase().includes('bucket not found')) {
+          if (getBucketError.message?.toLowerCase().includes('bucket not found')) {
             console.log('CreatePage: Bucket "images" not found. Attempting to create it...');
-            const { error: createError } = await supabase.storage.createBucket('images', {
-              public: true
-            });
-            
+            const { error: createError } = await supabase.storage.createBucket('images', { public: true });
             if (createError) {
-              console.error('CreatePage: Could not create bucket "images" (likely RLS on storage.buckets):', createError);
-              setError(`Storage initialization error: Could not create bucket. ${createError.message}`);
+              console.error('CreatePage: Could not create bucket "images":', createError);
+              setError(`Storage setup error: Could not create bucket. ${createError.message}`);
               return;
             }
             console.log('CreatePage: Bucket "images" created successfully.');
           } else {
-            console.error('CreatePage: Error getting bucket "images" (not a "not found" error - check RLS on storage.buckets for SELECT perm):', getBucketError);
-            setError(`Storage initialization error: Could not verify bucket. ${getBucketError.message}`);
+            console.error('CreatePage: Error getting bucket "images":', getBucketError);
+            setError(`Storage setup error: Could not verify bucket. ${getBucketError.message}`);
             return;
           }
         } else {
           console.log('CreatePage: Bucket "images" exists:', bucketInfo);
           if (!bucketInfo.public) {
             console.log('CreatePage: Bucket "images" is not public. Attempting to update it...');
-            const { error: updateError } = await supabase.storage.updateBucket('images', {
-              public: true
-            });
-            
+            const { error: updateError } = await supabase.storage.updateBucket('images', { public: true });
             if (updateError) {
               console.error('CreatePage: Could not update bucket "images" to public:', updateError);
-              setError(`Storage initialization error: Could not update bucket to public. ${updateError.message}`);
+              setError(`Storage setup error: Could not update bucket to public. ${updateError.message}`);
               return;
             }
             console.log('CreatePage: Bucket "images" updated to public successfully.');
-          } else {
-            console.log('CreatePage: Bucket "images" is already public.');
           }
         }
         
-        // Images tablosunun şemasını kontrol et (isteğe bağlı, ama iyi bir pratik)
-        const { error: tableError } = await supabase
-          .from('images')
-          .select('title', { count: 'exact', head: true }); // Daha hafif bir sorgu
-          
+        const { error: tableError } = await supabase.from('images').select('id', { count: 'exact', head: true });
         if (tableError) {
-          console.error('CreatePage: Table schema check error on "images":', tableError);
-          setError('Database table "images" may not be correctly configured. Please contact administrator.');
-        } else {
-          console.log('CreatePage: Images table schema looks good.');
+          console.error('CreatePage: Table check error on "images":', tableError);
+          setError('Database table "images" may not be correctly configured.');
+          return;
         }
+        console.log('CreatePage: Storage and table checks passed. Storage is ready.');
+        setIsStorageReady(true);
       } catch (err: any) {
         console.error('CreatePage: General error in setupStorage:', err);
         setError(`An unexpected error occurred during storage initialization: ${err.message}`);
@@ -104,7 +97,7 @@ export default function CreatePage() {
     };
     
     setupStorage();
-  }, [supabase]); // Added supabase to dependency array
+  }, [supabase]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -129,6 +122,12 @@ export default function CreatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isStorageReady) {
+      setError('Storage is not ready. Please wait or try refreshing the page.');
+      console.warn('handleSubmit blocked because isStorageReady is false.');
+      return;
+    }
     
     if (!file) {
       setError('Please select an image to upload');
