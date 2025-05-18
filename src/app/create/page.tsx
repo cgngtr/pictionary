@@ -92,7 +92,6 @@ export default function CreatePage() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
     
-    // Check if file is an image
     if (!selectedFile.type.startsWith('image/')) {
       setError('Please select an image file');
       return;
@@ -101,7 +100,6 @@ export default function CreatePage() {
     setFile(selectedFile);
     setError(null);
     
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreview(e.target?.result as string);
@@ -132,7 +130,6 @@ export default function CreatePage() {
       setIsUploading(true);
       setError(null);
       
-      // 1. Get the authenticated user
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         router.push('/login');
@@ -142,7 +139,6 @@ export default function CreatePage() {
       const userId = session.user.id;
       console.log('Authenticated user ID:', userId);
       
-      // Önce getUserInfo ile kullanıcının geçerli olduğunu doğrulayalım
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
         console.error('User validation error:', userError);
@@ -160,15 +156,12 @@ export default function CreatePage() {
         return;
       }
       
-      // 2. Upload the file to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      // Tüm dosyaları tek düz klasöre koyalım - RLS'ye takılmamak için
       const filePath = `${fileName}`;
       
       console.log('Attempting to upload to path:', filePath);
       
-      // Önce dosyayı yükleyelim
       let uploadedFilePath;
       try {
         const { data, error: uploadError } = await supabase.storage
@@ -193,12 +186,9 @@ export default function CreatePage() {
         return;
       }
       
-      // 3. Şimdi veritabanı kaydını oluşturalım
       try {
-        // Images tablosunda user_id alanı auth.users(id) tablosuna (UUID) referans veriyor
-        // Bu nedenle doğru ID türünü kullanmalıyız
         const imageRecord = {
-          user_id: userData.user.id, // auth.users tablosundaki UUID
+          user_id: userData.user.id,
           storage_path: filePath,
           original_filename: file.name,
           is_public: isPublic,
@@ -221,7 +211,6 @@ export default function CreatePage() {
         console.log('Database record created:', insertData);
       } catch (dbError: any) {
         console.error('Database insert error:', dbError);
-        // Dosyayı temizleyelim
         try {
           await supabase.storage
             .from('images')
@@ -242,7 +231,6 @@ export default function CreatePage() {
         return;
       }
       
-      // 4. Başarılı! Ana sayfaya yönlendirelim
       router.push('/');
       
     } catch (err: any) {
@@ -401,7 +389,7 @@ export default function CreatePage() {
             <button
               type="submit"
               className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-red-600 border border-transparent rounded-lg shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-red-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-              disabled={isUploading || !isStorageReady} // Also disable if storage isn't ready
+              disabled={isUploading || !isStorageReady}
             >
               {isUploading ? (
                 <>

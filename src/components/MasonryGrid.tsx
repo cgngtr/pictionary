@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import ImageCard from './ImageCard';
-import { HomePageImageData } from '@/app/page'; // Adjusted import path
+import { HomePageImageData } from '@/app/page';
 
-// Simple debounce function (assuming it might have been removed or for completeness)
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   return (...args: Parameters<F>): Promise<ReturnType<F>> =>
@@ -22,7 +21,6 @@ interface MasonryGridProps {
 const MasonryGrid = ({ images, onDelete }: MasonryGridProps) => {
   const [columns, setColumns] = useState(4);
 
-  // Responsive column adjustment based on screen width
   useEffect(() => {
     const calculateColumns = () => {
       const innerWidth = window.innerWidth;
@@ -32,7 +30,7 @@ const MasonryGrid = ({ images, onDelete }: MasonryGridProps) => {
       if (innerWidth < 1280) return 4;
       return 5;
     };
-    setColumns(calculateColumns()); // Set initial columns on mount
+    setColumns(calculateColumns());
 
     const handleResize = () => {
       const newColumnCount = calculateColumns();
@@ -44,7 +42,6 @@ const MasonryGrid = ({ images, onDelete }: MasonryGridProps) => {
     return () => window.removeEventListener('resize', debouncedHandleResize);
   }, []);
 
-  // Distribute images into columns
   const getColumnImages = useCallback(() => {
     if (!images || images.length === 0 || columns === 0) return [];
     const columnContainers: HomePageImageData[][] = Array.from({ length: columns }, () => []);

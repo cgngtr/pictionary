@@ -24,7 +24,6 @@ const ImageCard = ({ imageData, onDelete }: ImageCardProps) => {
     originalImageRecord
   } = imageData;
 
-  // Wrap onDelete callback to ensure it's compatible with onDeletePin prop
   const handleDeletePin = async (imageId: string, storagePath: string) => {
     return onDelete(imageId, storagePath);
   };
@@ -81,7 +80,6 @@ const ImageCard = ({ imageData, onDelete }: ImageCardProps) => {
         </div>
       </div>
         
-      {/* Her zaman render edilsin, isOpen prop'u ile kontrol edilsin */}
       <PinterestModal 
         isOpen={isModalOpen} 
         setIsOpen={setIsModalOpen} 

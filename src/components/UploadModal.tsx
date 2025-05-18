@@ -21,8 +21,6 @@ const UploadModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you would handle the pin creation
-    // For now we'll just close the modal
     onClose();
   };
 

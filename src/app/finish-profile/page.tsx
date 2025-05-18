@@ -24,10 +24,9 @@ export default function FinishProfilePage() {
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) {
         setError('You must be logged in to complete your profile.');
-        router.push('/login'); // Redirect to login if no user
+        router.push('/login');
       } else {
         setUser(currentUser);
-        // Optionally, fetch existing profile data if user might revisit this page
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('description, avatar_url')
@@ -41,7 +40,7 @@ export default function FinishProfilePage() {
             setAvatarPreview(profile.avatar_url);
           }
         }
-        if (profileError && profileError.code !== 'PGRST116') { // PGRST116: no rows found
+        if (profileError && profileError.code !== 'PGRST116') {
              console.error('Error fetching profile:', profileError);
              setError('Could not load existing profile information.');
         }
@@ -59,7 +58,6 @@ export default function FinishProfilePage() {
         setAvatarPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      // Clear the URL input as we're now using file upload
       setAvatarUrl('');
     } else if (file) {
       setError('Please select a valid JPG or PNG image.');
@@ -81,7 +79,6 @@ export default function FinishProfilePage() {
     try {
       let finalAvatarUrl = avatarUrl;
 
-      // If user uploaded a file, process it
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
@@ -89,7 +86,6 @@ export default function FinishProfilePage() {
         console.log('FinishProfile: Using images bucket for avatar storage');
         
         try {
-          // Upload to images bucket
           console.log(`FinishProfile: Uploading file to images/${fileName}...`);
           const { error: uploadError } = await supabase.storage
             .from('images')
@@ -105,7 +101,6 @@ export default function FinishProfilePage() {
           
           console.log('FinishProfile: File uploaded successfully, getting public URL');
           
-          // Get the public URL
           const { data: urlData } = await supabase.storage
             .from('images')
             .getPublicUrl(fileName);
@@ -116,7 +111,6 @@ export default function FinishProfilePage() {
           } else {
             console.warn('FinishProfile: No public URL returned from getPublicUrl');
             
-            // Fallback - manually construct URL if we have NEXT_PUBLIC_SUPABASE_URL
             if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
               finalAvatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${fileName}`;
               console.log(`FinishProfile: Manually constructed URL: ${finalAvatarUrl}`);
@@ -133,11 +127,10 @@ export default function FinishProfilePage() {
       const profileData = {
         user_id: user.id,
         description: description,
-        avatar_url: finalAvatarUrl || null, // Store null if empty
+        avatar_url: finalAvatarUrl || null,
         updated_at: new Date().toISOString(),
       };
 
-      // Upsert into profiles table
       const { error: upsertError } = await supabase
         .from('profiles')
         .upsert(profileData, { onConflict: 'user_id' });
@@ -147,7 +140,6 @@ export default function FinishProfilePage() {
       }
       
       setMessage('Profile updated successfully!');
-      // Redirect after a delay
       setTimeout(() => {
         router.push('/');
       }, 1500);
@@ -262,7 +254,7 @@ export default function FinishProfilePage() {
                       setAvatarUrl(e.target.value);
                       if (e.target.value) {
                         setAvatarPreview(e.target.value);
-                        setAvatarFile(null); // Clear file selection when URL is entered
+                        setAvatarFile(null);
                       } else {
                         setAvatarPreview(null);
                       }

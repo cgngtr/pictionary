@@ -70,14 +70,12 @@ export const AuthForm = () => {
 
         if (signUpError) throw signUpError
 
-        // Create user profile in our custom users table
         const { error: profileError } = await supabase
           .from('users')
           .insert([{ username }])
 
         if (profileError) throw profileError
 
-        // Show success message for signup
         setError('Please check your email to verify your account')
         return
       } else {

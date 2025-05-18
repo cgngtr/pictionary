@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import Navigation from "../components/Navigation";
 import "./globals.css";
 
-// Force dynamic rendering to handle hydration mismatches
 export const dynamic = "force-dynamic";
 
 const inter = Inter({

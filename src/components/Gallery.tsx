@@ -7,7 +7,6 @@ import PinterestModal from './PinterestModal'
 export default function Gallery() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
-  // Mock data for our Pinterest-like grid
   const [images] = useState([
     {
       id: 1,
@@ -25,7 +24,6 @@ export default function Gallery() {
       username: 'traveler',
       profileImage: 'https://randomuser.me/api/portraits/men/2.jpg'
     },
-    // ... more images
   ])
 
   const openModal = () => setIsModalOpen(true)

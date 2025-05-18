@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/utils';
-// import { removeStorageRLS } from '@/lib/supabase/remove-storage-rls'; // Removed
 import { User } from '@supabase/supabase-js';
 import { useRouter, usePathname } from 'next/navigation';
 import PinterestModal from '@/components/PinterestModal';
@@ -63,7 +62,6 @@ export default function ProfilePage() {
         
       if (error) {
         console.error('ProfilePage: Error fetching user images records:', error);
-        // Don't set an error here that overwrites storage setup errors
         return;
       }
       
@@ -82,9 +80,8 @@ export default function ProfilePage() {
             continue;
           }
 
-          // Prioritize Supabase getPublicUrl
           const { data: urlData } = await supabase.storage
-            .from('images') // Bucket name
+            .from('images')
             .getPublicUrl(image.storage_path);
 
           if (urlData?.publicUrl) {
@@ -92,10 +89,9 @@ export default function ProfilePage() {
             console.log(`ProfilePage: Generated public URL for ${image.id} via Supabase SDK: ${urlData.publicUrl}`);
           } else {
             console.warn(`ProfilePage: Failed to get public URL for ${image.id} using Supabase SDK. storage_path: ${image.storage_path}`);
-            // Fallback or error logging if NEXT_PUBLIC_SUPABASE_URL was intended
             if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
                 const directUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${image.storage_path}`;
-                urls[image.id] = directUrl; // Still set it for debugging, but with a warning
+                urls[image.id] = directUrl;
                 console.warn(`ProfilePage: Using manually constructed URL for ${image.id} as fallback: ${directUrl}`);
             } else {
                 console.error(`ProfilePage: NEXT_PUBLIC_SUPABASE_URL is not defined. Cannot construct manual URL for ${image.id}.`);
@@ -108,19 +104,15 @@ export default function ProfilePage() {
         console.log('ProfilePage: Final imageUrls state set:', urls);
         if (!allUrlsGenerated) {
             console.warn("ProfilePage: Not all image URLs could be generated. Some images might not load.");
-            // setError("Some image URLs could not be generated. Please check console."); // Optional: inform user
         }
       }
     } catch (err) {
       console.error('ProfilePage: Error in fetchUserImages function:', err);
-      // setError("Failed to load image details."); // Optional: inform user
     }
   }, [supabase, bucketExists]);
 
-  // Function to load user data after we confirm session exists
   const loadUserData = useCallback(async (userId: string) => {
     try {
-      // Fetch user data
       const { data: userDataFromTable, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -133,7 +125,6 @@ export default function ProfilePage() {
       }
       setUserData(userDataFromTable);
 
-      // Fetch profile data
       const { data: profileDataFromTable, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -146,7 +137,6 @@ export default function ProfilePage() {
       }
       setProfileData(profileDataFromTable);
       
-      // Check if essential data is missing and redirect or prompt
       if (!userDataFromTable) {
         console.warn('ProfilePage: User data missing from \'users\' table. User may need to re-register or contact support.');
         setError('Critical user information is missing. Please try signing out and in, or contact support if the issue persists.');
@@ -167,12 +157,9 @@ export default function ProfilePage() {
     }
   }, [supabase, pathname, router]);
 
-  // Setup bucket and fetch images
   const setupStorage = useCallback(async (userId: string) => {
     try {
-      // Bucket ve RLS setup
       console.log('ProfilePage: Initializing storage setup...');
-      // Skip the RLS on storage.buckets attempt as it causes permission issues
       console.log('ProfilePage: Skipping RLS on storage.buckets setup (not needed)');
 
       const { data: rpcPublicityData, error: rpcPublicityError } = await supabase.rpc('manage_images_bucket_publicity');
@@ -193,7 +180,6 @@ export default function ProfilePage() {
       if (getBucketError) {
         if (getBucketError.message && getBucketError.message.toLowerCase().includes('bucket not found')) {
           console.log('ProfilePage: Bucket "images" not found. Attempting to create it...');
-          // Only try to create if bucket explicitly not found
           const { error: createError } = await supabase.storage.createBucket('images', { public: true });
           if (createError) {
             console.error('ProfilePage: Could not create bucket "images" (RLS on storage.buckets?):', createError);
@@ -222,7 +208,6 @@ export default function ProfilePage() {
         setBucketExists(true);
       }
 
-      // Fetch images if bucket setup was successful
       if (bucketExists || (bucketInfo && bucketInfo.public)) {
         console.log('ProfilePage: Bucket ready, fetching user images for user ID:', userId);
         await fetchUserImages(userId);
@@ -238,7 +223,6 @@ export default function ProfilePage() {
     }
   }, [supabase, bucketExists, fetchUserImages]);
 
-  // Check session and initialize page
   const checkSession = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -248,18 +232,16 @@ export default function ProfilePage() {
         setUser(session.user);
         console.log("ProfilePage: User session found:", session.user.email);
         
-        // Load user data first
         const userDataSuccess = await loadUserData(session.user.id);
         if (!userDataSuccess) {
           setIsLoading(false);
           return;
         }
         
-        // Then set up storage and fetch images
         await setupStorage(session.user.id);
       } else {
         console.log("ProfilePage: No session, redirecting via router.refresh().");
-        router.refresh(); // Let middleware handle redirect
+        router.refresh();
       }
     } catch (error: any) {
       console.error('ProfilePage: Error in checkSession:', error);
@@ -273,15 +255,13 @@ export default function ProfilePage() {
     }
   }, [supabase, router, loadUserData, setupStorage]);
 
-  // Handle session recovery
   const recoverSession = useCallback(async () => {
-    if (isLoading) return; // Don't try to recover while already loading
+    if (isLoading) return;
 
     console.log("ProfilePage: Attempting to recover session...");
     setIsLoading(true);
     
     try {
-      // Check if session still exists and is valid
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -291,21 +271,17 @@ export default function ProfilePage() {
         return;
       }
       
-      // Session exists, refresh user state
       console.log("ProfilePage: Valid session found during recovery");
       setUser(session.user);
       
-      // Get fresh data if needed
       if (!userData || !profileData) {
         await loadUserData(session.user.id);
       }
       
-      // Refresh images if needed
       if (userImages.length === 0 || Object.keys(imageUrls).length === 0) {
         await fetchUserImages(session.user.id);
       }
       
-      // Clear any previous errors
       setError(null);
     } catch (error: any) {
       console.error('ProfilePage: Error recovering session:', error);
@@ -333,50 +309,40 @@ export default function ProfilePage() {
       checkSession();
     }
 
-    // Handle visibility change - check session when tab becomes visible again
     const handleVisibilityChange = () => {
-      // Clear any existing timeout
       if (visibilityTimeout) {
         clearTimeout(visibilityTimeout);
         visibilityTimeout = null;
       }
       
       if (document.visibilityState === 'visible' && isMounted) {
-        // If the page was hidden for more than a brief moment and is now visible
         console.log("ProfilePage: Page visibility changed to visible");
         
-        // Small delay to prevent multiple rapid rechecks
         visibilityTimeout = setTimeout(() => {
           recoverSession();
         }, 300);
       }
     };
     
-    // Handle focus events for tab switching within the same site
     const handleFocus = () => {
       console.log("ProfilePage: Window focused");
-      // Don't check session more than once every 10 seconds to prevent excessive API calls
       if (isMounted && !isLoading && lastSessionCheckRef.current + 10000 < Date.now()) {
         lastSessionCheckRef.current = Date.now();
         recoverSession();
       }
     };
 
-    // Keep track of last session check time
     const lastSessionCheckRef = { current: Date.now() };
     
-    // Add event listeners for tab visibility and focus changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
 
-    // Setup automatic session refresh every 9 minutes to prevent expiry
-    // (assuming a 10 minute token lifetime)
     const sessionRefreshInterval = setInterval(() => {
       if (isMounted && user) {
         console.log("ProfilePage: Performing periodic session refresh");
         supabase.auth.refreshSession();
       }
-    }, 9 * 60 * 1000); // 9 minutes
+    }, 9 * 60 * 1000);
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`ProfilePage: Auth event: ${event}`);
@@ -388,13 +354,10 @@ export default function ProfilePage() {
         setUser(session.user);
         checkSession();
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        // Just update the user, no need to reload everything
         setUser(session.user);
         
-        // Update the last session check time
         lastSessionCheckRef.current = Date.now();
         
-        // Also clear any session-related errors that might be displayed
         if (error?.includes('session') || error?.includes('expired')) {
           setError(null);
         }
@@ -492,7 +455,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading && !isSessionChecked) { // Show main loader only during initial session check
+  if (isLoading && !isSessionChecked) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500"></div>
@@ -501,7 +464,7 @@ export default function ProfilePage() {
     );
   }
   
-  if (error && !user) { // Show full page error if user context is not established
+  if (error && !user) {
     return (
       <div className="pt-20 min-h-screen flex flex-col items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 p-6 rounded-xl shadow-xl w-full max-w-lg text-center">
@@ -513,7 +476,7 @@ export default function ProfilePage() {
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Oops! Profile Error.</h2>
           <p className="text-gray-600 dark:text-gray-400">{error}</p>
           <button
-            onClick={() => router.refresh()} // Refresh to retry
+            onClick={() => router.refresh()}
             className="mt-6 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
             aria-label="Try again"
           >
@@ -524,7 +487,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user && isSessionChecked) { // If session checked and still no user (e.g. redirected but component still tries to render)
+  if (!user && isSessionChecked) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
         <h1 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">Redirecting to login...</h1>
@@ -533,13 +496,11 @@ export default function ProfilePage() {
     );
   }
 
-  // Inline error display if user is loaded but there's a non-critical error (e.g. image loading partial failure)
   const renderInlineError = () => (
     error && user && (
       <div className="my-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 rounded-md shadow">
         <div className="flex">
           <div className="flex-shrink-0">
-            {/* Heroicon: ExclamationTriangle (Yellow) */}
             <svg className="h-5 w-5 text-yellow-400 dark:text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
             </svg>
@@ -568,13 +529,12 @@ export default function ProfilePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" /> {/* Enhanced gradient */}
         </div>
 
-        {/* Potential inline error display area */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {renderInlineError()}
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative -mt-32 pb-8"> {/* This -mt-32 pulls the content up */}
+          <div className="relative -mt-32 pb-8">
             <div className="relative z-10">
               <div className="relative w-36 h-36 md:w-40 md:h-40 mx-auto md:mx-0 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden shadow-xl group">
                 <Image
@@ -605,11 +565,10 @@ export default function ProfilePage() {
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{userProfile.stats.pins}</p>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pins</p>
                   </div>
-                  {/* Add more stats here if available e.g. Followers, Following */}
                 </div>
               </div>
               
-              <div className="mt-6 md:mt-2 md:ml-6 flex-shrink-0"> {/* Adjusted margin */}
+              <div className="mt-6 md:mt-2 md:ml-6 flex-shrink-0">
                 <button
                   onClick={() => setIsEditProfileModalOpen(true)}
                   className="px-6 py-2.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900 shadow-md hover:shadow-lg"
@@ -622,9 +581,9 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-10 pb-16"> {/* Adjusted spacing */}
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-6 sm:mb-8">My Creations</h2> {/* Changed title, added dark mode */}
-            {isLoading && userImages.length === 0 ? ( // Show spinner if loading images specifically
+          <div className="mt-10 pb-16">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-6 sm:mb-8">My Creations</h2>
+            {isLoading && userImages.length === 0 ? (
                <div className="flex justify-center items-center py-12">
                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500"></div>
                </div>
@@ -663,17 +622,15 @@ export default function ProfilePage() {
                         <Image
                           src={imageUrls[image.id]}
                           alt={image.title || 'Pin image'}
-                          fill // Use fill for aspect ratio container
+                          fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
                             console.error(`ProfilePage: Error loading image ID ${image.id} from URL ${imageUrls[image.id]}`);
-                            (e.target as HTMLImageElement).onerror = null; // Prevent infinite loop
-                            // Consider a more robust placeholder system, but for now a class change
+                            (e.target as HTMLImageElement).onerror = null;
                             e.currentTarget.parentElement?.classList.add('image-error-placeholder'); 
-                            e.currentTarget.src = 'https://via.placeholder.com/400x600?text=Error'; // Fallback visible error
+                            e.currentTarget.src = 'https://via.placeholder.com/400x600?text=Error';
                           }}
                         />
-                        {/* Overlay and text elements */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         
                         <div className="absolute top-2 right-2 md:top-3 md:right-3 opacity-0 group-hover:opacity-100 transform translate-y-[-10px] group-hover:translate-y-0 transition-all duration-300">
@@ -694,7 +651,7 @@ export default function ProfilePage() {
                             <p className="text-white font-bold text-sm md:text-md mb-1 truncate" title={image.title}>{image.title}</p>
                           )}
                           <div className="flex items-center">
-                            {userProfile.profileImage && ( // This will show current user's image, not pin creator's, might be intended
+                            {userProfile.profileImage && (
                               <img 
                                 src={userProfile.profileImage} 
                                 alt={userProfile.username || 'User'} 
@@ -732,21 +689,21 @@ export default function ProfilePage() {
           setIsOpen={handleCloseModal}
           image={{
             id: selectedPinForModal.id,
-            src: imageUrls[selectedPinForModal.id] || '', // Ensure src is not empty
+            src: imageUrls[selectedPinForModal.id] || '',
             alt: selectedPinForModal.title || 'Pin image',
-            height: 'auto', // Modal might adjust this
+            height: 'auto',
             username: userProfile.username,
             profileImage: userProfile.profileImage,
-            title: selectedPinForModal.title || 'Untitled Pin', // Ensure title
-            description: selectedPinForModal.description || 'No description available.', // Ensure description
+            title: selectedPinForModal.title || 'Untitled Pin',
+            description: selectedPinForModal.description || 'No description available.',
             originalImageRecord: { 
                 storage_path: selectedPinForModal.storage_path, 
-                user_id: selectedPinForModal.user_id, // Pass user_id to modal if needed for auth checks
-                id: selectedPinForModal.id // Pass id to modal
+                user_id: selectedPinForModal.user_id,
+                id: selectedPinForModal.id
             }
           }}
           onDeletePin={handleDeletePin}
-          // currentUser={user} // Pass current user if modal needs to check ownership for delete
+          
         />
       )}
 
@@ -760,8 +717,8 @@ export default function ProfilePage() {
           currentAvatarUrl={profileData?.avatar_url || ''}
           currentCoverImageUrl={profileData?.cover_image_url || null}
           onProfileUpdate={() => {
-            handleProfileUpdate(); // Refresh profile data
-            if (user) loadUserData(user.id); // Also refresh userData
+            handleProfileUpdate();
+            if (user) loadUserData(user.id);
           }}
         />
       )}

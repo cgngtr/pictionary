@@ -7,20 +7,16 @@ import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 
-// ImageData tipini ProfilePage'den alabiliriz veya burada yeniden tanımlayabiliriz.
-// Şimdilik ProfilePage'deki ile aynı olduğunu varsayalım ve HomeClient'ın bekleyeceği son veri yapısını düşünelim.
 export type HomePageImageData = {
-  id: string; // image.id
-  src: string; // resolved public URL from storage
+  id: string;
+  src: string;
   alt: string;
   title: string;
   description?: string;
-  username?: string; // from users table
-  profileImage?: string; // from profiles table (avatar_url)
-  // MasonryGrid veya ImageCard'ın ihtiyaç duyabileceği diğer alanlar (örn: height)
-  height?: string; // Örneğin '300px', ImageCard bunu kullanıyor olabilir
-  // Orijinal image verisini de saklayabiliriz gerekirse
-  originalImageRecord?: any; // Supabase'den gelen ham image kaydı
+  username?: string;
+  profileImage?: string;
+  height?: string;
+  originalImageRecord?: any;
 };
 
 export default function HomePage() {
@@ -33,33 +29,25 @@ export default function HomePage() {
   const supabase = createClient();
   const router = useRouter();
 
-  // Görselin ID'sine dayalı olarak tutarlı bir yükseklik üreten yardımcı fonksiyon
   const getConsistentHeight = useCallback((id: string) => {
-    // Temel yükseklik aralığı
     const minHeight = 280;
     const maxHeight = 450;
     const range = maxHeight - minHeight;
     
-    // String'i sayısal bir değere dönüştürmek için bir hash fonksiyonu
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
-      // Her karakter için char code'u hash'e ekle
       hash = ((hash << 5) - hash) + id.charCodeAt(i);
-      hash |= 0; // 32-bit integer'a dönüştür
+      hash |= 0;
     }
     
-    // Hash'i pozitif bir sayıya dönüştür ve 0-1 aralığında normalize et
-    const normalizedHash = Math.abs(hash) / 2147483647; // 2^31 - 1
+    const normalizedHash = Math.abs(hash) / 2147483647;
     
-    // Yükseklik aralığında bir değer hesapla
     const height = Math.floor(normalizedHash * range) + minHeight;
     return `${height}px`;
   }, []);
 
   const fetchAllImagesAndUsers = useCallback(async () => {
     console.log("HomePage: Starting to fetch all images and user data...");
-    // İki işlem aynı anda başlatılacağı için burada isLoading'i true yapmıyoruz
-    // setIsLoading(true);
     setPageError(null);
     try {
       const { data: imageRecords, error: imagesError } = await supabase
@@ -79,8 +67,7 @@ export default function HomePage() {
       let profilesDataMap = new Map();
 
       if (userIds.length > 0) {
-        // Kullanıcı ve profil verilerini paralel olarak çek
-        const [usersResult, profilesResult] = await Promise.all([
+          const [usersResult, profilesResult] = await Promise.all([
           supabase.from('users').select('id, username, first_name, last_name').in('id', userIds),
           supabase.from('profiles').select('user_id, avatar_url').in('user_id', userIds)
         ]);
@@ -98,7 +85,6 @@ export default function HomePage() {
         }
       }
 
-      // Resimleri paralel olarak işle
       const imagePromises = imageRecords
         .filter(record => record.storage_path)
         .map(async (record) => {
@@ -111,7 +97,6 @@ export default function HomePage() {
           const userRecord = usersDataMap.get(record.user_id);
           const profileRecord = profilesDataMap.get(record.user_id);
           
-          // Rastgele yükseklik yerine tutarlı bir yükseklik kullan
           const imageHeight = getConsistentHeight(record.id);
           
           return {
@@ -136,7 +121,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, getConsistentHeight]); // getConsistentHeight bağımlılığını ekle
+  }, [supabase, getConsistentHeight]);
 
   const handleDeletePin = useCallback(async (imageId: string, storagePath: string) => {
     if (!imageId || !storagePath) {
@@ -146,7 +131,6 @@ export default function HomePage() {
     }
 
     try {
-      // 1. Delete from storage and database in parallel
       const [storageResult, dbResult] = await Promise.all([
         supabase.storage.from('images').remove([storagePath]),
         supabase.from('images').delete().match({ id: imageId })
@@ -161,9 +145,8 @@ export default function HomePage() {
         throw dbResult.error;
       }
 
-      // 3. Update frontend state
       setAllImages(currentImages => currentImages.filter(img => img.id !== imageId));
-      alert('Pin deleted successfully!'); // Or use a more subtle notification
+      alert('Pin deleted successfully!');
 
     } catch (error: any) {
       console.error('Failed to delete pin:', error);
@@ -193,27 +176,22 @@ export default function HomePage() {
     setFilteredImages(allImages);
   }, [allImages]);
 
-  // Update filteredImages when allImages changes
   useEffect(() => {
     handleSearch(searchTerm);
   }, [allImages, searchTerm, handleSearch]);
 
   const loadInitialData = useCallback(async () => {
-    // Başlangıç yükleme durumunu true yap
     setIsLoading(true);
     setPageError(null);
 
     try {
       console.log("HomePage: Checking initial session...");
-      // Oturum ve veri çekme işlemlerini aynı anda başlat
       const sessionPromise = supabase.auth.getSession();
       
-      // Oturum bilgisini bekle
       const { data: { session } } = await sessionPromise;
       setUser(session?.user || null);
       console.log("HomePage: Initial session checked:", !!session, session?.user?.email);
       
-      // Verileri çek - ancak bu esnada UI'ı engelleme
       fetchAllImagesAndUsers().catch(error => {
         console.error("Error fetching images:", error);
         setPageError("Failed to fetch images: " + error.message);
@@ -224,18 +202,14 @@ export default function HomePage() {
       setPageError("Failed to initialize page: " + error.message);
       setIsLoading(false);
     }
-    // fetchAllImagesAndUsers içinde isLoading'i false yapıyoruz
   }, [supabase, fetchAllImagesAndUsers]);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Sayfa ilk yüklendiğinde verileri çek
     loadInitialData();
 
-    // Oturum değişikliklerini dinle
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      // Bileşen unmount olmuşsa işlemleri sonlandır
       if (!isMounted) return;
 
       console.log("HomePage: Auth state change:", event);
@@ -243,8 +217,6 @@ export default function HomePage() {
       setUser(session?.user || null);
       
       if (event === 'SIGNED_IN') {
-        // Oturum açıldığında veri yüklemeyi başlat,
-        // ama işlem süresince sayfa geçişini bloke etme
         fetchAllImagesAndUsers().catch(error => {
           console.error("Error after sign in:", error);
           if (isMounted) {
@@ -256,18 +228,15 @@ export default function HomePage() {
         if (isMounted) {
           setAllImages([]);
         }
-        // router.push('/login'); // Middleware halletmeli
       }
     });
 
-    // Clean up
     return () => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [supabase, loadInitialData, fetchAllImagesAndUsers]); // fetchAllImagesAndUsers dependency added
+  }, [supabase, loadInitialData, fetchAllImagesAndUsers]);
 
-  // Sayfa yüklenirken ve veri yoksa yükleme göster
   if (isLoading && allImages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -292,7 +261,7 @@ export default function HomePage() {
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Oops! Something went wrong.</h2>
             <p className="text-gray-600 dark:text-gray-400">{pageError}</p>
             <button
-              onClick={() => window.location.reload()} // Simple refresh action
+              onClick={() => window.location.reload()}
               className="mt-6 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
               aria-label="Try again"
             >

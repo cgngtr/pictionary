@@ -3,14 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import PinterestModal from '@/components/PinterestModal';
-import type { HomePageImageData } from '@/app/page'; // Ensure this path is correct
-import { createClient } from '@/lib/supabase/utils'; // Corrected import
+import type { HomePageImageData } from '@/app/page';
+import { createClient } from '@/lib/supabase/utils';
 
-const supabase = createClient(); // Initialize Supabase client
+const supabase = createClient();
 
-// Define your Supabase project's public storage URL
 const SUPABASE_STORAGE_PUBLIC_URL = 'https://ozautaqmiyqlendcnrpd.supabase.co/storage/v1/object/public/';
-const IMAGE_BUCKET_NAME = 'images'; // Define the image bucket name
+const IMAGE_BUCKET_NAME = 'images';
 
 async function fetchImageById(id: string): Promise<HomePageImageData | null> {
   if (!id) {
@@ -21,7 +20,7 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
 
   try {
     const { data, error } = await supabase
-      .from('images') // User updated table name
+      .from('images')
       .select(`
         id,
         title,
@@ -34,7 +33,7 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') { // PGRST116: "Searched for a single row, but multiple rows were found" or "0 rows"
+      if (error.code === 'PGRST116') {
         console.warn(`Pin not found in Supabase for id: ${id} (or multiple found). Error:`, error.message);
       } else {
         console.error('Error fetching pin from Supabase:', error);
@@ -43,13 +42,11 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
     }
 
     if (data) {
-      // console.log('Fetched data from Supabase:', data); // Removed for cleanliness
       
       let username = 'User not found';
       let profileImage = 'https://st3.depositphotos.com/6672868/13701/v/450/depositphotos_137014128-stock-illustration-user-profile-icon.jpg'; // Generic default avatar
 
       if (data.user_id) {
-        // Fetch username from your custom 'users' table
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('username')
@@ -62,28 +59,18 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
           username = userData.username;
         }
 
-        // Fetch avatar_url from 'profiles' table
-        // This assumes profiles.user_id is the auth.uid(), same as images.user_id
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('avatar_url')
-          .eq('user_id', data.user_id) // Using images.user_id which is auth.uid()
+          .eq('user_id', data.user_id)
           .single();
 
         if (profileError) {
           console.error(`Error fetching profile for user_id ${data.user_id}:`, profileError);
         } else if (profileData && profileData.avatar_url) {
-          // Assuming avatar_url might be a full URL or a path that needs prefixing.
-          // If it's a relative path in a specific bucket (e.g., 'avatars'), construct the full URL:
-          // profileImage = `${SUPABASE_STORAGE_PUBLIC_URL}avatars/${profileData.avatar_url}`;
-          // For now, let's assume it might be a full URL or needs to be handled by the component if it's a path.
-          // If it's a path relative to the main image bucket, it might be: `${SUPABASE_STORAGE_PUBLIC_URL}${IMAGE_BUCKET_NAME}/${profileData.avatar_url}`
-          // Let's try using it directly. If it doesn't work, we'll know it's a path.
           profileImage = profileData.avatar_url;
-          // A common pattern is to check if it's already a full URL:
+          profileImage = profileData.avatar_url;
           if (!profileData.avatar_url.startsWith('http')) {
-            // Assuming avatars are in a bucket named 'avatars'
-            // Adjust BUCKET_NAME if it's different or stored alongside main images
             profileImage = `${SUPABASE_STORAGE_PUBLIC_URL}avatars/${profileData.avatar_url}`;
           }
         }
@@ -92,7 +79,6 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
       const imageUrl = data.storage_path 
         ? `${SUPABASE_STORAGE_PUBLIC_URL}${IMAGE_BUCKET_NAME}/${data.storage_path}` 
         : '';
-      // console.log('Constructed imageUrl:', imageUrl); // Removed for cleanliness
       if (!imageUrl || !data.storage_path) { 
         console.error(`Image storage_path is missing or empty for pin id: ${id}. Cannot construct image URL.`);
       }
@@ -120,13 +106,9 @@ async function fetchImageById(id: string): Promise<HomePageImageData | null> {
   }
 }
 
-// Placeholder for your actual pin deletion logic from this page
 async function deletePinFromPage(imageId: string, storagePath: string): Promise<void> {
   console.log(`Attempting to delete pin from Supabase: ${imageId}, path: ${storagePath}`);
-  // Implement actual deletion logic here using your Supabase client
-  // e.g., await supabase.from('your_table_name').delete().match({ id: imageId });
-  // And: await supabase.storage.from('your_bucket_name').remove([storagePath]);
-
+  alert('Pin deletion from this page needs to be implemented with Supabase calls. This is a simulation.');
   alert('Pin deletion from this page needs to be implemented with Supabase calls. This is a simulation.');
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -167,15 +149,15 @@ export default function PinPage() {
         .finally(() => {
           setIsLoading(false);
         });
-    } else if (!params.id && !isLoading) { // Handle case where ID might be missing after initial load check
+    } else if (!params.id && !isLoading) {
         setError('No Pin ID provided. Redirecting to homepage.');
         setTimeout(() => router.push('/'), 3000);
     }
-  }, [imageId, router]); // REMOVED isLoading from dependency array
+  }, [imageId, router]);
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
-    router.push('/'); // Navigate to homepage when modal is closed
+    router.push('/');
   }, [router]);
 
   const handleDeletePin = useCallback(async (pinId: string, storagePath: string) => {
@@ -187,7 +169,6 @@ export default function PinPage() {
     } catch (err) {
       console.error('Error deleting pin from page:', err);
       alert('Failed to delete pin.');
-      // Optionally, you might want to keep the modal open or handle UI differently
     }
   }, [modalImage, router]);
 
@@ -208,12 +189,9 @@ export default function PinPage() {
   }
 
   if (!modalImage || !isModalOpen) {
-    // This case should ideally be handled by redirection if modalImage is null after loading.
-    // If modal is explicitly closed, redirection handled by handleCloseModal.
-    // Adding a fallback message or redirect if somehow reached.
-    if (!isLoading && !modalImage) { // ensure it's not during initial load
+    if (!isLoading && !modalImage) {
         router.push('/');
-        return null; // Render nothing while redirecting
+        return null;
     }
     return null; 
   }
@@ -222,7 +200,7 @@ export default function PinPage() {
     <div className="w-full h-screen bg-black/10 dark:bg-black/30"> {/* Optional: faint background */}
       <PinterestModal
         isOpen={isModalOpen}
-        setIsOpen={handleCloseModal} // This will navigate away
+        setIsOpen={handleCloseModal}
         image={modalImage}
         onDeletePin={handleDeletePin}
       />

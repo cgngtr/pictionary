@@ -1,48 +1,42 @@
 'use client';
 
 import React, { useState, useEffect, MouseEvent, KeyboardEvent as ReactKeyboardEvent, useCallback } from 'react';
-// Dynamically import Lucide React icons to avoid SSR issues
 import dynamic from 'next/dynamic';
-import type { HomePageImageData } from '@/app/page'; // Assuming this type is suitable
+import type { HomePageImageData } from '@/app/page';
 
-// Dynamically import icons with no SSR
 const X = dynamic(() => import('lucide-react').then(mod => mod.X), { ssr: false });
 const Heart = dynamic(() => import('lucide-react').then(mod => mod.Heart), { ssr: false });
 const Share2 = dynamic(() => import('lucide-react').then(mod => mod.Share2), { ssr: false });
 const Download = dynamic(() => import('lucide-react').then(mod => mod.Download), { ssr: false });
 const Bookmark = dynamic(() => import('lucide-react').then(mod => mod.Bookmark), { ssr: false });
-const Trash2 = dynamic(() => import('lucide-react').then(mod => mod.Trash2), { ssr: false }); // Added Trash2 icon
-const Check = dynamic(() => import('lucide-react').then(mod => mod.Check), { ssr: false }); // Added Check icon for copy feedback
-// const MessageCircle = dynamic(() => import('lucide-react').then(mod => mod.MessageCircle), { ssr: false }); // Not used, can be removed
+const Trash2 = dynamic(() => import('lucide-react').then(mod => mod.Trash2), { ssr: false });
+const Check = dynamic(() => import('lucide-react').then(mod => mod.Check), { ssr: false });
 
 interface PinterestModalProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  image: HomePageImageData | null; // Allow null if image might not be loaded initially
-  onDeletePin: (imageId: string, storagePath: string) => Promise<void>; // Function to handle deletion
+  image: HomePageImageData | null;
+  onDeletePin: (imageId: string, storagePath: string) => Promise<void>;
 }
 
 export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }: PinterestModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [isCopied, setIsCopied] = useState(false); // State for copy feedback
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleClose = (e?: MouseEvent) => {
     if (e) {
-      e.stopPropagation(); // Prevent event bubbling
+      e.stopPropagation();
     }
     setIsOpen(false);
   };
 
-  // Event handler for backdrop clicks
   const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
-    // Only close if clicking the backdrop itself, not its children
     if (e.target === e.currentTarget) {
       setIsOpen(false);
     }
   };
 
-  // Event handler for ESC key
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -51,11 +45,9 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     };
 
     if (isOpen && typeof window !== 'undefined') {
-      // Add keyboard listener and disable body scroll
       window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
       
-      // Cleanup when unmounted or closed
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
         document.body.style.overflow = 'auto';
@@ -75,17 +67,16 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
 
   const handleShare = async (e: MouseEvent) => {
     e.stopPropagation();
-    if (!image || !image.id) { // Check for image.id for the new URL structure
+    if (!image || !image.id) {
       console.error('Cannot copy link: image ID is missing.');
       alert('Could not copy link. Image ID is missing.');
       return;
     }
-    // Construct the site-specific URL
     const shareUrl = `${window.location.origin}/pin/${image.id}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy link:', error);
       alert('Failed to copy link. Please try again.');
@@ -102,7 +93,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     if (window.confirm('Are you sure you want to delete this pin?')) {
       try {
         await onDeletePin(image.id, image.originalImageRecord.storage_path);
-        setIsOpen(false); // Close modal after successful deletion
+        setIsOpen(false);
       } catch (error) {
         console.error('Error deleting pin from modal:', error);
         alert('Failed to delete pin. Please try again.');
@@ -127,7 +118,6 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      // Try to get a file extension from the src or default to .jpg
       const fileExtension = image.src.split('.').pop() || 'jpg';
       const fileName = image.title ? `${image.title}.${fileExtension}` : `download.${fileExtension}`;
       link.setAttribute('download', fileName);
@@ -155,7 +145,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     >
       <div 
         className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-200 dark:border-gray-700"
-        onClick={(e) => e.stopPropagation()} // Prevent clicks on modal content from closing the modal
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Left: Image section */}
         <div className="relative w-full md:w-3/5 bg-gray-100 dark:bg-gray-700 overflow-hidden aspect-[3/4]">

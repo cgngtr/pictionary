@@ -6,7 +6,6 @@ import { User } from '@supabase/supabase-js';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
-// Dynamically import icons with no SSR
 const X = dynamic(() => import('lucide-react').then(mod => mod.X), { ssr: false });
 const Upload = dynamic(() => import('lucide-react').then(mod => mod.Upload), { ssr: false });
 const User2 = dynamic(() => import('lucide-react').then(mod => mod.User2), { ssr: false });
@@ -101,7 +100,6 @@ const EditProfileModal = ({
       let avatarUrl = currentAvatarUrl;
       let coverUrl = currentCoverImageUrl;
 
-      // Upload new avatar if one was selected
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
@@ -120,7 +118,6 @@ const EditProfileModal = ({
             
         if (urlData?.publicUrl) {
           avatarUrl = urlData.publicUrl;
-          // Attempt to delete old avatar if a new one is uploaded and an old one exists
           if (currentAvatarUrl && currentAvatarUrl.includes(supabase.storage.from('images').getPublicUrl('').data.publicUrl)) {
             const oldAvatarPath = currentAvatarUrl.substring(currentAvatarUrl.lastIndexOf('avatars/'));
             if (oldAvatarPath !== filePath) { // Don't delete if it's somehow the same path
@@ -137,7 +134,6 @@ const EditProfileModal = ({
         }
       }
 
-      // Upload new cover image if one was selected
       if (coverFile) {
         const fileExt = coverFile.name.split('.').pop();
         const fileName = `covers/${user.id}-${Date.now()}.${fileExt}`;
@@ -156,7 +152,6 @@ const EditProfileModal = ({
 
         if (urlData?.publicUrl) {
           coverUrl = urlData.publicUrl;
-          // Attempt to delete old cover image
           if (currentCoverImageUrl && currentCoverImageUrl.includes(supabase.storage.from('images').getPublicUrl('').data.publicUrl)) {
             const oldCoverPath = currentCoverImageUrl.substring(currentCoverImageUrl.lastIndexOf('covers/'));
              if (oldCoverPath !== filePath) {
@@ -173,7 +168,6 @@ const EditProfileModal = ({
         }
       }
       
-      // First check if profile exists
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('profiles')
         .select('id')
@@ -187,7 +181,6 @@ const EditProfileModal = ({
       let updateError;
 
       if (existingProfile) {
-        // Update existing profile
         const { error } = await supabase
           .from('profiles')
           .update({
@@ -200,7 +193,6 @@ const EditProfileModal = ({
         
         updateError = error;
       } else {
-        // Insert new profile
         const { error } = await supabase
           .from('profiles')
           .insert({
@@ -216,7 +208,6 @@ const EditProfileModal = ({
 
       if (updateError) throw updateError;
       
-      // Success!
       onProfileUpdate();
       onClose();
     } catch (err: any) {

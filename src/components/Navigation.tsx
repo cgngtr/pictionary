@@ -182,11 +182,9 @@ export default function Navigation({ onSearch }: NavigationProps) {
 
   return (
     <>
-      {/* Fixed navigation bar that floats */}
       <nav className="fixed top-3 left-0 right-0 z-50 px-4 sm:px-6 pb-3">
         <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-2xl">
           <div className="flex items-center justify-between h-14 px-4 sm:px-6">
-            {/* Logo */}
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center space-x-2 group" aria-label="Go to Pictionary homepage">
                 <svg
@@ -200,7 +198,6 @@ export default function Navigation({ onSearch }: NavigationProps) {
               </Link>
             </div>
 
-            {/* Search Bar - Only show on pages with onSearch prop */}
             {onSearch && (
               <div className="flex-1 flex justify-center px-2 lg:ml-6 lg:justify-end">
                 <div className="max-w-lg w-full lg:max-w-xs">
@@ -229,9 +226,7 @@ export default function Navigation({ onSearch }: NavigationProps) {
               </div>
             )}
 
-            {/* Right side items */}
             <div className="flex items-center space-x-3 md:space-x-4 ml-auto">
-              {/* Create Pin Button - Icon */}
                {user && (
                   <Link href="/create" legacyBehavior>
                     <a 
@@ -245,7 +240,6 @@ export default function Navigation({ onSearch }: NavigationProps) {
                   </Link>
               )}
 
-              {/* User menu or Login button */}
               {isLoading ? (
                 <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
               ) : user ? (
