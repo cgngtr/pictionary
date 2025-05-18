@@ -30,6 +30,29 @@ export default function HomePage() {
   const supabase = createClient();
   const router = useRouter();
 
+  // Görselin ID'sine dayalı olarak tutarlı bir yükseklik üreten yardımcı fonksiyon
+  const getConsistentHeight = useCallback((id: string) => {
+    // Temel yükseklik aralığı
+    const minHeight = 280;
+    const maxHeight = 450;
+    const range = maxHeight - minHeight;
+    
+    // String'i sayısal bir değere dönüştürmek için bir hash fonksiyonu
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      // Her karakter için char code'u hash'e ekle
+      hash = ((hash << 5) - hash) + id.charCodeAt(i);
+      hash |= 0; // 32-bit integer'a dönüştür
+    }
+    
+    // Hash'i pozitif bir sayıya dönüştür ve 0-1 aralığında normalize et
+    const normalizedHash = Math.abs(hash) / 2147483647; // 2^31 - 1
+    
+    // Yükseklik aralığında bir değer hesapla
+    const height = Math.floor(normalizedHash * range) + minHeight;
+    return `${height}px`;
+  }, []);
+
   const fetchAllImagesAndUsers = useCallback(async () => {
     console.log("HomePage: Starting to fetch all images and user data...");
     // İki işlem aynı anda başlatılacağı için burada isLoading'i true yapmıyoruz
@@ -84,7 +107,9 @@ export default function HomePage() {
 
           const userRecord = usersDataMap.get(record.user_id);
           const profileRecord = profilesDataMap.get(record.user_id);
-          const randomHeight = Math.floor(Math.random() * (450 - 280 + 1)) + 280;
+          
+          // Rastgele yükseklik yerine tutarlı bir yükseklik kullan
+          const imageHeight = getConsistentHeight(record.id);
           
           return {
             id: record.id,
@@ -94,7 +119,7 @@ export default function HomePage() {
             description: record.description,
             username: userRecord?.username || (userRecord ? `${userRecord.first_name} ${userRecord.last_name}` : 'Unknown User'),
             profileImage: profileRecord?.avatar_url,
-            height: `${randomHeight}px`,
+            height: imageHeight,
             originalImageRecord: record
           };
         });
@@ -108,7 +133,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase]); // supabase dependency
+  }, [supabase, getConsistentHeight]); // getConsistentHeight bağımlılığını ekle
 
   const handleDeletePin = useCallback(async (imageId: string, storagePath: string) => {
     if (!imageId || !storagePath) {
