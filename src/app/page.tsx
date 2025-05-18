@@ -32,7 +32,8 @@ export default function HomePage() {
 
   const fetchAllImagesAndUsers = useCallback(async () => {
     console.log("HomePage: Starting to fetch all images and user data...");
-    setIsLoading(true);
+    // İki işlem aynı anda başlatılacağı için burada isLoading'i true yapmıyoruz
+    // setIsLoading(true);
     setPageError(null);
     try {
       const { data: imageRecords, error: imagesError } = await supabase
@@ -41,7 +42,7 @@ export default function HomePage() {
         .order('created_at', { ascending: false });
 
       if (imagesError) throw imagesError;
-      if (!imageRecords) {
+      if (!imageRecords || imageRecords.length === 0) {
         setAllImages([]);
         setIsLoading(false);
         return;
@@ -52,30 +53,40 @@ export default function HomePage() {
       let profilesDataMap = new Map();
 
       if (userIds.length > 0) {
-        const { data: users, error: usersError } = await supabase
-          .from('users')
-          .select('id, username, first_name, last_name')
-          .in('id', userIds);
-        if (usersError) console.warn("HomePage: Error fetching users data:", usersError);
-        else if (users) users.forEach(u => usersDataMap.set(u.id, u));
+        // Kullanıcı ve profil verilerini paralel olarak çek
+        const [usersResult, profilesResult] = await Promise.all([
+          supabase.from('users').select('id, username, first_name, last_name').in('id', userIds),
+          supabase.from('profiles').select('user_id, avatar_url').in('user_id', userIds)
+        ]);
 
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id, avatar_url')
-          .in('user_id', userIds);
-        if (profilesError) console.warn("HomePage: Error fetching profiles data:", profilesError);
-        else if (profiles) profiles.forEach(p => profilesDataMap.set(p.user_id, p));
+        if (usersResult.error) {
+          console.warn("HomePage: Error fetching users data:", usersResult.error);
+        } else if (usersResult.data) {
+          usersResult.data.forEach(u => usersDataMap.set(u.id, u));
+        }
+
+        if (profilesResult.error) {
+          console.warn("HomePage: Error fetching profiles data:", profilesResult.error);
+        } else if (profilesResult.data) {
+          profilesResult.data.forEach(p => profilesDataMap.set(p.user_id, p));
+        }
       }
 
-      const imagesWithUrls: HomePageImageData[] = [];
-      for (const record of imageRecords) {
-        if (!record.storage_path) continue;
-        const { data: urlData } = await supabase.storage.from('images').getPublicUrl(record.storage_path);
-        if (urlData?.publicUrl) {
+      // Resimleri paralel olarak işle
+      const imagePromises = imageRecords
+        .filter(record => record.storage_path)
+        .map(async (record) => {
+          const { data: urlData } = await supabase.storage.from('images').getPublicUrl(record.storage_path);
+          if (!urlData?.publicUrl) {
+            console.warn(`HomePage: Could not get public URL for image ${record.id} with path ${record.storage_path}`);
+            return null;
+          }
+
           const userRecord = usersDataMap.get(record.user_id);
           const profileRecord = profilesDataMap.get(record.user_id);
           const randomHeight = Math.floor(Math.random() * (450 - 280 + 1)) + 280;
-          imagesWithUrls.push({
+          
+          return {
             id: record.id,
             src: urlData.publicUrl,
             alt: record.title || 'Image pin',
@@ -85,11 +96,11 @@ export default function HomePage() {
             profileImage: profileRecord?.avatar_url,
             height: `${randomHeight}px`,
             originalImageRecord: record
-          });
-        } else {
-          console.warn(`HomePage: Could not get public URL for image ${record.id} with path ${record.storage_path}`);
-        }
-      }
+          };
+        });
+
+      const results = await Promise.all(imagePromises);
+      const imagesWithUrls = results.filter(Boolean) as HomePageImageData[];
       setAllImages(imagesWithUrls);
     } catch (error: any) {
       console.error("HomePage: General error in fetchAllImagesAndUsers:", error);
@@ -107,20 +118,19 @@ export default function HomePage() {
     }
 
     try {
-      // 1. Delete from storage
-      const { error: storageError } = await supabase.storage.from('images').remove([storagePath]);
-      if (storageError) {
-        console.error('Storage deletion error:', storageError);
-        // Decide if you want to proceed if storage deletion fails, or alert and stop.
-        // For now, we'll log and attempt to delete from DB anyway.
-        // throw storageError; // Or alert user and return
+      // 1. Delete from storage and database in parallel
+      const [storageResult, dbResult] = await Promise.all([
+        supabase.storage.from('images').remove([storagePath]),
+        supabase.from('images').delete().match({ id: imageId })
+      ]);
+
+      if (storageResult.error) {
+        console.error('Storage deletion error:', storageResult.error);
       }
 
-      // 2. Delete from database table
-      const { error: dbError } = await supabase.from('images').delete().match({ id: imageId });
-      if (dbError) {
-        console.error('Database deletion error:', dbError);
-        throw dbError; // If DB deletion fails, this is more critical
+      if (dbResult.error) {
+        console.error('Database deletion error:', dbResult.error);
+        throw dbResult.error;
       }
 
       // 3. Update frontend state
@@ -134,41 +144,76 @@ export default function HomePage() {
   }, [supabase]);
 
   const loadInitialData = useCallback(async () => {
+    // Başlangıç yükleme durumunu true yap
     setIsLoading(true);
     setPageError(null);
+
     try {
       console.log("HomePage: Checking initial session...");
-      const { data: { session } } = await supabase.auth.getSession();
+      // Oturum ve veri çekme işlemlerini aynı anda başlat
+      const sessionPromise = supabase.auth.getSession();
+      
+      // Oturum bilgisini bekle
+      const { data: { session } } = await sessionPromise;
       setUser(session?.user || null);
       console.log("HomePage: Initial session checked:", !!session, session?.user?.email);
-      await fetchAllImagesAndUsers();
+      
+      // Verileri çek - ancak bu esnada UI'ı engelleme
+      fetchAllImagesAndUsers().catch(error => {
+        console.error("Error fetching images:", error);
+        setPageError("Failed to fetch images: " + error.message);
+        setIsLoading(false);
+      });
     } catch (error: any) {
       console.error("Error during initial data load:", error);
       setPageError("Failed to initialize page: " + error.message);
-    } finally {
-      // setIsLoading(false); // fetchAllImagesAndUsers handles its own isLoading
+      setIsLoading(false);
     }
+    // fetchAllImagesAndUsers içinde isLoading'i false yapıyoruz
   }, [supabase, fetchAllImagesAndUsers]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Sayfa ilk yüklendiğinde verileri çek
     loadInitialData();
 
+    // Oturum değişikliklerini dinle
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Bileşen unmount olmuşsa işlemleri sonlandır
+      if (!isMounted) return;
+
       console.log("HomePage: Auth state change:", event);
+      
       setUser(session?.user || null);
+      
       if (event === 'SIGNED_IN') {
-        loadInitialData(); // Oturum açıldığında tüm veriyi yeniden yükle
+        // Oturum açıldığında veri yüklemeyi başlat,
+        // ama işlem süresince sayfa geçişini bloke etme
+        fetchAllImagesAndUsers().catch(error => {
+          console.error("Error after sign in:", error);
+          if (isMounted) {
+            setPageError("Failed to load data after sign in");
+            setIsLoading(false);
+          }
+        });
       } else if (event === 'SIGNED_OUT') {
-        setAllImages([]);
+        if (isMounted) {
+          setAllImages([]);
+        }
         // router.push('/login'); // Middleware halletmeli
       }
     });
+
+    // Clean up
     return () => {
+      isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [supabase, loadInitialData]); // loadInitialData eklendi
+  }, [supabase, loadInitialData, fetchAllImagesAndUsers]); // fetchAllImagesAndUsers dependency added
 
-  if (isLoading && allImages.length === 0) { // Sadece başlangıç yüklemesinde ve resim yokken tam ekran yükleme göster
+  // Sayfa yüklenirken ve veri yoksa yükleme göster
+  if (isLoading && allImages.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -187,21 +232,7 @@ export default function HomePage() {
       </div>
     );
   }
-  
-  // Kullanıcı oturumu yoksa ve public içerik gösterilecekse bu kontrol farklı olabilir.
-  // Şimdilik, eğer bir şekilde buraya gelinirse ve user yoksa (middleware yönlendirmemişse) bir mesaj gösterelim.
-  // Ancak idealde, public ana sayfa için bu user kontrolü HomeClient'a devredilmeli veya hiç olmamalı.
-  // if (!user && allImages.length === 0) { 
-  //   return (
-  //     <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-  //       <h1 className="text-xl font-semibold text-gray-700 mb-2">No content available.</h1>
-  //       <p className="text-gray-600 mb-4">Please log in to see more.</p>
-  //       <button onClick={() => router.push('/login')} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
-  //         Login
-  //       </button>
-  //     </div>
-  //   );
-  // }
 
+  // Client bileşenini render et
   return <HomeClient images={allImages} onDelete={handleDeletePin} />;
 }

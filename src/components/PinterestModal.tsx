@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, MouseEvent, KeyboardEvent, useCallback } from 'react';
+import React, { useState, useEffect, MouseEvent, KeyboardEvent as ReactKeyboardEvent, useCallback } from 'react';
 // Dynamically import Lucide React icons to avoid SSR issues
 import dynamic from 'next/dynamic';
 import type { HomePageImageData } from '@/app/page'; // Assuming this type is suitable
@@ -27,37 +27,54 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
   const [isLiked, setIsLiked] = useState(false);
   const [isCopied, setIsCopied] = useState(false); // State for copy feedback
 
-  const handleClose = useCallback(() => {
+  const handleClose = (e?: MouseEvent) => {
+    if (e) {
+      e.stopPropagation(); // Prevent event bubbling
+    }
     setIsOpen(false);
-  }, [setIsOpen]);
+  };
 
-  const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+  // Event handler for backdrop clicks
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
+    // Only close if clicking the backdrop itself, not its children
+    if (e.target === e.currentTarget) {
       setIsOpen(false);
     }
-  }, [setIsOpen]);
+  };
 
+  // Event handler for ESC key
   useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
     if (isOpen && typeof window !== 'undefined') {
-      document.addEventListener('keydown', handleKeyDown);
+      // Add keyboard listener and disable body scroll
+      window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
       
+      // Cleanup when unmounted or closed
       return () => {
-        document.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keydown', handleKeyDown);
         document.body.style.overflow = 'auto';
       };
     }
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen, setIsOpen]);
 
-  const handleSave = () => {
+  const handleSave = (e: MouseEvent) => {
+    e.stopPropagation();
     setIsSaved(!isSaved);
   };
 
-  const handleLike = () => {
+  const handleLike = (e: MouseEvent) => {
+    e.stopPropagation();
     setIsLiked(!isLiked);
   };
 
-  const handleShare = async () => {
+  const handleShare = async (e: MouseEvent) => {
+    e.stopPropagation();
     if (!image || !image.id) { // Check for image.id for the new URL structure
       console.error('Cannot copy link: image ID is missing.');
       alert('Could not copy link. Image ID is missing.');
@@ -75,7 +92,8 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: MouseEvent) => {
+    e.stopPropagation();
     if (!image || !image.id || !image.originalImageRecord?.storage_path) {
       console.error('Cannot delete: image data or storage path is missing.');
       alert('Could not delete pin. Required information is missing.');
@@ -92,7 +110,8 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (e: MouseEvent) => {
+    e.stopPropagation();
     if (!image || !image.src) {
       console.error('Cannot download: image source is missing.');
       alert('Could not download image. Source is missing.');
@@ -126,12 +145,6 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
     return null;
   }
 
-  const handleBackdropClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      setIsOpen(false);
-    }
-  }, [setIsOpen]);
-
   return (
     <div 
       className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center p-4 z-50"
@@ -140,7 +153,10 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
       aria-modal="true"
       aria-labelledby="pinterest-modal-title"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-200 dark:border-gray-700">
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-200 dark:border-gray-700"
+        onClick={(e) => e.stopPropagation()} // Prevent clicks on modal content from closing the modal
+      >
         {/* Left: Image section */}
         <div className="relative w-full md:w-3/5 bg-gray-100 dark:bg-gray-700 overflow-hidden aspect-[3/4]">
           <img 
@@ -155,6 +171,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2 items-center">
               <button 
+                type="button"
                 title="Download"
                 onClick={handleDownload}
                 className="rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
@@ -162,6 +179,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
                 {Download && <Download size={18} />}
               </button>
               <button 
+                type="button"
                 title="Share"
                 onClick={handleShare}
                 className="flex items-center gap-1 rounded-full p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
@@ -174,6 +192,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
                 {isCopied && <span className="text-sm text-green-500 dark:text-green-400">Copied!</span>}
               </button>
               <button 
+                type="button"
                 title="Delete Pin"
                 onClick={handleDelete}
                 className="rounded-full p-2 bg-gray-100 hover:bg-red-100 text-red-500 dark:bg-gray-700 dark:hover:bg-red-800 dark:text-red-400"
@@ -182,9 +201,11 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
               </button>
             </div>
             <button 
+              type="button"
               title="Close"
               className="rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={handleClose}
+              aria-label="Close modal"
             >
               {X && <X size={20} />}
             </button>
@@ -213,6 +234,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
           <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-auto">
             <div className="flex items-center gap-2 justify-between">
               <button 
+                type="button"
                 className={`flex items-center gap-1 px-3 py-2 rounded-full ${isLiked ? 'bg-red-100 text-red-500 dark:bg-red-900 dark:text-red-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 onClick={handleLike}
               >
@@ -220,6 +242,7 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
                 <span className="text-sm">{isLiked ? '25' : '24'}</span>
               </button>
               <button 
+                type="button"
                 className={`px-4 py-2 rounded-full font-semibold ${isSaved ? 'bg-red-500 text-white' : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500'}`}
                 onClick={handleSave}
               >

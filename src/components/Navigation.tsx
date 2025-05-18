@@ -31,84 +31,107 @@ export default function Navigation() {
   const router = useRouter();
   const supabase = createClient();
 
+  const goToProfile = () => {
+    console.log("Navigating to profile page");
+    router.push('/profile');
+  };
+
   useEffect(() => {
-    setIsLoading(true);
+    let isMounted = true;
+
+    const fetchInitialData = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (currentSession?.user) {
+          setUser(currentSession.user);
+          performDataFetchForUser(currentSession.user.id).catch(console.error);
+        } else {
+          setUser(null);
+          setUserData(null);
+          setProfileData(null);
+        }
+      } catch (error) {
+        console.error("Error during initial data load in Navigation:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
 
     const performDataFetchForUser = async (userId: string) => {
       try {
-        const { data: fetchedUserData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
+        const [userResult, profileResult] = await Promise.allSettled([
+          supabase.from('users').select('*').eq('id', userId).single(),
+          supabase.from('profiles').select('*').eq('user_id', userId).single()
+        ]);
 
-        if (userError && userError.code !== 'PGRST116') {
-          console.error('Error fetching user data in performDataFetchForUser:', userError);
+        if (!isMounted) return;
+
+        if (userResult.status === 'fulfilled' && userResult.value.data) {
+          setUserData(userResult.value.data);
+        } else if (userResult.status === 'fulfilled' && userResult.value.error && userResult.value.error.code !== 'PGRST116') {
+          console.error('Error fetching user data:', userResult.value.error);
           setUserData(null);
-          setProfileData(null);
-          return;
+        } else {
+          setUserData(null);
         }
-        setUserData(fetchedUserData || null);
 
-        if (fetchedUserData) {
-          const { data: fetchedProfileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', fetchedUserData.id)
-            .single();
-
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching profile data in performDataFetchForUser:', profileError);
-            setProfileData(null);
-          } else {
-            setProfileData(fetchedProfileData || null);
-          }
+        if (profileResult.status === 'fulfilled' && profileResult.value.data) {
+          setProfileData(profileResult.value.data);
+        } else if (profileResult.status === 'fulfilled' && profileResult.value.error && profileResult.value.error.code !== 'PGRST116') {
+          console.error('Error fetching profile data:', profileResult.value.error);
+          setProfileData(null);
         } else {
           setProfileData(null);
         }
       } catch (error) {
         console.error('Exception during data fetch in performDataFetchForUser:', error);
-        setUserData(null);
-        setProfileData(null);
+        if (isMounted) {
+          setUserData(null);
+          setProfileData(null);
+        }
       }
     };
 
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      if (currentSession?.user) {
-        setUser(currentSession.user);
-        await performDataFetchForUser(currentSession.user.id);
-      } else {
-        setUser(null);
-        setUserData(null);
-        setProfileData(null);
-      }
-      setIsLoading(false);
-    });
+    setIsLoading(true);
+    
+    fetchInitialData();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log(`Navigation Auth Event: ${event}`);
-      setIsLoading(true);
-
+      
+      if (!isMounted) return;
+      
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setUserData(null);
         setProfileData(null);
         router.refresh();
-      } else if (newSession?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+      } else if (newSession?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
         setUser(newSession.user);
-        await performDataFetchForUser(newSession.user.id);
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          router.refresh();
+        performDataFetchForUser(newSession.user.id).catch(console.error);
+        router.refresh();
+      } else if (event === 'INITIAL_SESSION') {
+        if (newSession?.user) {
+          setUser(newSession.user);
+          performDataFetchForUser(newSession.user.id).catch(console.error);
+        } else {
+          setUser(null);
+          setUserData(null);
+          setProfileData(null);
         }
-      } else if (event === 'INITIAL_SESSION' && !newSession?.user) {
-        setUser(null);
-        setUserData(null);
-        setProfileData(null);
       }
-      setIsLoading(false);
+      if (event === 'INITIAL_SESSION' && isMounted) {
+        setIsLoading(false);
+      }
     });
 
     return () => {
+      isMounted = false;
       authListener?.subscription.unsubscribe();
     };
   }, [supabase, router]);
@@ -139,11 +162,6 @@ export default function Navigation() {
       : user?.email?.split('@')[0] || 'Guest',
     email: user?.email || '',
     profileImage: profileData?.avatar_url || 'https://st3.depositphotos.com/6672868/13701/v/450/depositphotos_137014128-stock-illustration-user-profile-icon.jpg'
-  };
-
-  const goToProfile = () => {
-    console.log("Navigating to profile page");
-    router.push('/profile');
   };
 
   return (
