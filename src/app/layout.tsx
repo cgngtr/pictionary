@@ -25,10 +25,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.className} antialiased min-h-screen bg-gray-50 dark:bg-gray-900`}
+        className={`${inter.className} antialiased min-h-screen bg-gray-50 dark:bg-[#101828]`}
       >
         <Navigation />
-        <main className="pt-16">
+        <main className="pt-[68px]">
           {children}
         </main>
       </body>
