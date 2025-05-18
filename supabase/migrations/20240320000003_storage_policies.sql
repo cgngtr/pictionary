@@ -20,20 +20,12 @@ WITH CHECK (true);
 -- REMOVED: The DO $$ block that attempted to ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
 -- We will attempt this via a separate RPC call from the application if direct DDL fails.
 
--- Define policies for storage.buckets (these will only take effect if RLS is successfully enabled on the table)
-DROP POLICY IF EXISTS "Authenticated users can read bucket information" ON storage.buckets;
-CREATE POLICY "Authenticated users can read bucket information"
-ON storage.buckets FOR SELECT
-TO authenticated
-USING (true);
+-- Policies for storage.buckets are removed as RLS is not being enabled on this table
+-- to avoid permission errors.
 
-DROP POLICY IF EXISTS "Anon users can read public bucket information" ON storage.buckets;
-CREATE POLICY "Anon users can read public bucket information"
-ON storage.buckets FOR SELECT
-TO anon
-USING (public = true);
-
--- RPC function to attempt enabling RLS on storage.buckets
+-- RPC function to attempt enabling RLS on storage.buckets (REMOVED)
+/*
+-- Ensure this entire block is commented out or deleted.
 CREATE OR REPLACE FUNCTION ensure_rls_on_storage_buckets()
 RETURNS json
 LANGUAGE plpgsql
@@ -82,7 +74,8 @@ BEGIN
   END;
 END;
 $$
-SET search_path = public, storage, extensions;
+SET search_path = public, storage, extensions; 
+*/
 
 -- Updated RPC function (renamed and simplified)
 -- Its only job is to ensure the 'images' bucket is public.

@@ -22,20 +22,8 @@ export default function CreatePage() {
       setIsStorageReady(false);
       setError(null);
       try {
-        console.log('CreatePage: Attempting to ensure RLS on storage.buckets...');
-        const { data: rlsBucketsData, error: rlsBucketsError } = await supabase.rpc('ensure_rls_on_storage_buckets');
-        if (rlsBucketsError) {
-          console.error('CreatePage: RPC call to ensure_rls_on_storage_buckets failed:', rlsBucketsError);
-          setError(`Storage setup error (RPC rlsBuckets): ${rlsBucketsError.message}`);
-          return;
-        } 
-        if (!rlsBucketsData || !rlsBucketsData.success) {
-          console.warn('CreatePage: RPC ensure_rls_on_storage_buckets did not succeed:', rlsBucketsData?.message);
-          setError(`Storage setup error (RPC rlsBuckets): ${rlsBucketsData?.message || 'Unknown RPC error'}`);
-          return;
-        }
-        console.log('CreatePage: RPC ensure_rls_on_storage_buckets reported success:', rlsBucketsData.message);
-
+        console.log('CreatePage: Skipping RLS on storage.buckets setup (not needed)');
+        
         console.log('CreatePage: Attempting to manage images bucket publicity...');
         const { data: rpcPublicityData, error: rpcPublicityError } = await supabase.rpc('manage_images_bucket_publicity');
         if (rpcPublicityError) {

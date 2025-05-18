@@ -54,14 +54,8 @@ export default function ProfilePage() {
       try {
         // Bucket ve RLS setup
         console.log('ProfilePage: Initializing storage setup...');
-        const { data: rlsBucketsData, error: rlsBucketsError } = await supabase.rpc('ensure_rls_on_storage_buckets');
-        if (rlsBucketsError) {
-          console.error('ProfilePage: RPC ensure_rls_on_storage_buckets failed (network/PostgREST error):', rlsBucketsError);
-        } else if (rlsBucketsData && !rlsBucketsData.success) {
-          console.warn('ProfilePage: RPC ensure_rls_on_storage_buckets did not succeed:', rlsBucketsData.message);
-        } else if (rlsBucketsData && rlsBucketsData.success) {
-          console.log('ProfilePage: RPC ensure_rls_on_storage_buckets reported success:', rlsBucketsData.message);
-        }
+        // Skip the RLS on storage.buckets attempt as it causes permission issues
+        console.log('ProfilePage: Skipping RLS on storage.buckets setup (not needed)');
 
         const { data: rpcPublicityData, error: rpcPublicityError } = await supabase.rpc('manage_images_bucket_publicity');
         if (rpcPublicityError) {
