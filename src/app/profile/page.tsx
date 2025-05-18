@@ -487,9 +487,7 @@ export default function ProfilePage() {
     profileImage: profileData?.avatar_url || 'https://source.unsplash.com/random/400x400/?portrait',
     coverImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
     stats: {
-      pins: userImages.length,
-      following: 0,
-      followers: 0
+      pins: userImages.length
     }
   };
 
@@ -567,14 +565,6 @@ export default function ProfilePage() {
                   <div className="text-center md:text-left">
                     <p className="text-3xl font-bold text-gray-900">{userProfile.stats.pins}</p>
                     <p className="text-sm font-medium text-gray-600">Pins</p>
-                  </div>
-                  <div className="text-center md:text-left">
-                    <p className="text-3xl font-bold text-gray-900">{userProfile.stats.following}</p>
-                    <p className="text-sm font-medium text-gray-600">Following</p>
-                  </div>
-                  <div className="text-center md:text-left">
-                    <p className="text-3xl font-bold text-gray-900">{userProfile.stats.followers}</p>
-                    <p className="text-sm font-medium text-gray-600">Followers</p>
                   </div>
                 </div>
               </div>

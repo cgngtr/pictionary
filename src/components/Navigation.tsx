@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/utils';
 import { User } from '@supabase/supabase-js';
@@ -21,12 +21,17 @@ type UserData = {
   last_name: string;
 };
 
-export default function Navigation() {
+type NavigationProps = {
+  onSearch?: (searchTerm: string) => void;
+}
+
+export default function Navigation({ onSearch }: NavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -34,6 +39,20 @@ export default function Navigation() {
   const goToProfile = () => {
     console.log("Navigating to profile page");
     router.push('/profile');
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    if (onSearch) {
+      onSearch(value);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && onSearch) {
+      onSearch(searchTerm);
+    }
   };
 
   useEffect(() => {
@@ -207,6 +226,9 @@ export default function Navigation() {
               <input
                 type="text"
                 placeholder="Search..."
+                value={searchTerm}
+                onChange={handleSearch}
+                onKeyDown={handleKeyDown}
                 className="w-full px-4 py-2 pl-10 text-sm text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
               />
               <div className="absolute inset-y-0 left-3 flex items-center">
@@ -224,6 +246,15 @@ export default function Navigation() {
                   />
                 </svg>
               </div>
+              <button
+                onClick={() => onSearch && onSearch(searchTerm)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+                aria-label="Search"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && onSearch && onSearch(searchTerm)}
+              >
+                <span className="text-xs font-medium bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md">Search</span>
+              </button>
             </div>
           </div>
 
@@ -269,36 +300,70 @@ export default function Navigation() {
             </Link>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile Navigation */}
           <div className="md:hidden flex items-center">
             <button
-              type="button"
+              className="p-2 rounded-md text-gray-500 hover:text-gray-600 focus:outline-none"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 rounded-md text-gray-700 dark:text-gray-200 hover:text-red-500 dark:hover:text-red-400"
+              aria-label="Toggle menu"
             >
-              <span className="sr-only">Open menu</span>
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-                />
-              </svg>
+              {isMenuOpen ? (
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1">
+          <div className="px-2 pt-2 pb-3 space-y-1 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            {/* Mobile Search */}
+            <div className="px-3 py-2">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  onKeyDown={handleKeyDown}
+                  className="w-full px-4 py-2 pl-10 text-sm text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                <div className="absolute inset-y-0 left-3 flex items-center">
+                  <svg
+                    className="h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <button
+                  onClick={() => {
+                    if (onSearch) onSearch(searchTerm);
+                    setIsMenuOpen(false);
+                  }}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+                  aria-label="Search"
+                >
+                  <span className="text-xs font-medium bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md">Search</span>
+                </button>
+              </div>
+            </div>
+
             {navigation.map((item) => (
               <Link
                 key={item.href}

@@ -212,7 +212,9 @@ export default function PinterestModal({ isOpen, setIsOpen, image, onDeletePin }
           </div>
 
           <h2 id="pinterest-modal-title" className="text-xl font-semibold mb-2 break-words">{image.title || 'Beautiful Minimalist Design'}</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4 break-words text-sm">{image.description || 'Create a stunning space with these minimalist design tips that blend functionality and aesthetics.'}</p>
+          {image.description && (
+            <p className="text-gray-600 dark:text-gray-300 mb-4 break-words text-sm">{image.description}</p>
+          )}
 
           <div className="flex items-center mb-6">
             <div className="h-10 w-10 rounded-full bg-gray-300 mr-3 overflow-hidden flex-shrink-0">

@@ -5,6 +5,7 @@ import HomeClient from '@/components/HomeClient';
 import { createClient } from '@/lib/supabase/utils';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import Navigation from '@/components/Navigation';
 
 // ImageData tipini ProfilePage'den alabiliriz veya burada yeniden tanımlayabiliriz.
 // Şimdilik ProfilePage'deki ile aynı olduğunu varsayalım ve HomeClient'ın bekleyeceği son veri yapısını düşünelim.
@@ -25,6 +26,8 @@ export type HomePageImageData = {
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [allImages, setAllImages] = useState<HomePageImageData[]>([]);
+  const [filteredImages, setFilteredImages] = useState<HomePageImageData[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const supabase = createClient();
@@ -168,6 +171,33 @@ export default function HomePage() {
     }
   }, [supabase]);
 
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term);
+    if (!term.trim()) {
+      setFilteredImages(allImages);
+      return;
+    }
+    
+    const lowerTerm = term.toLowerCase().trim();
+    const filtered = allImages.filter(image => {
+      const titleMatch = image.title?.toLowerCase().includes(lowerTerm);
+      const descriptionMatch = image.description?.toLowerCase().includes(lowerTerm);
+      return titleMatch || descriptionMatch;
+    });
+    
+    setFilteredImages(filtered);
+  }, [allImages]);
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm('');
+    setFilteredImages(allImages);
+  }, [allImages]);
+
+  // Update filteredImages when allImages changes
+  useEffect(() => {
+    handleSearch(searchTerm);
+  }, [allImages, searchTerm, handleSearch]);
+
   const loadInitialData = useCallback(async () => {
     // Başlangıç yükleme durumunu true yap
     setIsLoading(true);
@@ -248,16 +278,30 @@ export default function HomePage() {
 
   if (pageError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <h1 className="text-2xl font-bold text-red-500 mb-2">Error</h1>
-        <p className="text-gray-600 mb-4">{pageError}</p>
-        <button onClick={loadInitialData} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">
-          Try Again
-        </button>
-      </div>
+      <>
+        <Navigation onSearch={handleSearch} />
+        <div className="pt-6 min-h-screen flex flex-col items-center justify-center px-4">
+          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 p-4 rounded-md shadow w-full max-w-md">
+            <h2 className="text-red-700 dark:text-red-400 text-lg font-semibold mb-2">Error</h2>
+            <p className="text-red-600 dark:text-red-300">{pageError}</p>
+          </div>
+        </div>
+      </>
     );
   }
 
-  // Client bileşenini render et
-  return <HomeClient images={allImages} onDelete={handleDeletePin} />;
+  return (
+    <>
+      <Navigation onSearch={handleSearch} />
+      <div className="pt-6">
+        <HomeClient 
+          images={filteredImages} 
+          onDelete={handleDeletePin} 
+          searchTerm={searchTerm} 
+          totalImages={allImages.length} 
+          onClearSearch={clearSearch}
+        />
+      </div>
+    </>
+  );
 }
